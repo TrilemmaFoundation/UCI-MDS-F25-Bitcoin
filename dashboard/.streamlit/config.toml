@@ -1,0 +1,7 @@
+[theme]
+base = "dark"
+primaryColor = "#F7931A"          # Bitcoin orange
+backgroundColor = "#0D1117"       # Deep black-blue for contrast
+secondaryBackgroundColor = "#161B22"  # Slightly lighter panels
+textColor = "#E6EDF3"             # Soft white for readability
+font = "monospace"                # Terminal-style font for hacker vibes
