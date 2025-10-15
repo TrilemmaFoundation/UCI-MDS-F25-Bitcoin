@@ -19,7 +19,7 @@ Here are some short bios for each team member.
 ---
 
 ### ![Caleb Traxler](https://avatars.githubusercontent.com/u/69169157?s=400&u=1f56dec8c1fa00ff7681c59d8521ee3ee2ee1b57&v=4)  ###
-**Name:** Caleb Traxler 
+**Name:** Caleb Traxler  
 **Undergrad:** University of California, Los Angeles  
 **From:** Ventura County, CA, USA  
 **Favorite Hobby or Fun Fact:** I love to investing in stocks, securities and real estate. I hope to one day build a successful technology company. 
