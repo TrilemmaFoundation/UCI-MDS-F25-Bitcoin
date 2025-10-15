@@ -26,10 +26,10 @@ Here are some short bios for each team member.
 
 ---
 
-### ![Abigail Mori](https://drive.google.com/file/d/1kMmaF2ysZFYdtlp9CtWrpTNX2jN_M-pZ/view?usp=sharing) ###
-**Name:** Abigail Mori
-**Undergrad:** University of Connecticut
-**From:** Honolulu, HI, USA  
+### ![Abigail Mori](https://avatars.githubusercontent.com/u/107724346?s=400&u=9c8f54d992bc21d7a7b4b09faa95843edb922917&v=4) ###
+**Name:** Abigail Mori \
+**Undergrad:** University of Connecticut \
+**From:** Honolulu, HI, USA \
 **Favorite Hobby or Fun Fact:** I enjoy running and am training for a half marathon! 
 
 ---
