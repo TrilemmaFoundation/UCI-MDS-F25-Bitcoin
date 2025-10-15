@@ -22,7 +22,7 @@ Here are some short bios for each team member.
 **Name:** Caleb Traxler  
 **Undergrad:** University of California, Los Angeles  
 **From:** Ventura County, CA, USA  
-**Favorite Hobby or Fun Fact:** I love to investing in stocks, securities and real estate. I hope to one day build a successful technology company. 
+**Favorite Hobby or Fun Fact:** I love investing in stocks, securities and real estate. I hope to one day build a successful technology company. 
 
 ---
 
