@@ -8,7 +8,6 @@ sys.path.append(".")
 from model.strategy_new import compute_weights
 from sidebar import render_sidebar
 
-# --- New Modular Imports ---
 import config
 from data_loader import load_bitcoin_data
 from simulation import (
@@ -42,7 +41,7 @@ def main():
         st.stop()
 
     # --- UI Rendering: Header and Controls ---
-    render_header(df_btc[df_btc["Type"] == "Historical"], config.yesterday_formatted)
+    render_header(df_btc[df_btc["Type"] == "Historical"], config.today_formatted)
     start_date, current_day, df_window = render_controls(
         df_btc, params["investment_window"]
     )
@@ -106,6 +105,15 @@ def main():
     chart_display_start = max(historical_context_start_date, df_btc.index[0])
     df_for_chart = df_btc.loc[chart_display_start:current_view_end_date].copy()
 
+    render_recommendations(
+        dynamic_perf,
+        df_current,
+        weights,
+        params["budget"],
+        current_day,
+        start_date + pd.DateOffset(days=current_day),
+    )
+
     render_performance(
         df_window=df_window,
         weights=weights,
@@ -113,10 +121,6 @@ def main():
         uniform_perf=uniform_perf,
         current_day=current_day,
         df_for_chart=df_for_chart,  # Pass the new extended DataFrame
-    )
-
-    render_recommendations(
-        dynamic_perf, df_current, weights, params["budget"], current_day
     )
 
     st.info(

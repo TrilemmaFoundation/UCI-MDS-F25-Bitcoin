@@ -11,7 +11,6 @@ def render_controls(df_btc, investment_window):
 
     # The full data range now includes the forecast
     full_data_end_date = df_btc.index[-1]
-    print(full_data_end_date)
     # Dynamically calculate the latest possible start date based on the full range
     max_start = (
         full_data_end_date
@@ -30,7 +29,7 @@ def render_controls(df_btc, investment_window):
             st.stop()
 
         # Set a reasonable default start date (e.g., today)
-        default_start_date = config.yesterday_raw
+        default_start_date = config.today_raw
 
         default_start = max(min_start, default_start_date)
 

@@ -121,7 +121,7 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
                 name="Executed Buy",  # More descriptive name
                 marker=dict(
                     size=weights.loc[df_current.index][active_signals]
-                    * 7000,  # Variable size
+                    * 3000,  # Variable size
                     color="red",  # Original strong color
                     opacity=0.6,
                     line=dict(width=1, color="darkred"),

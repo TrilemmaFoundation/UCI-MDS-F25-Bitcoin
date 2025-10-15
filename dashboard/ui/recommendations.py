@@ -4,13 +4,15 @@ import pandas as pd
 from model.strategy_new import construct_features  # Assumes this file exists
 
 
-def render_recommendations(dynamic_perf, df_current, weights, budget, current_day):
+def render_recommendations(
+    dynamic_perf, df_current, weights, budget, current_day, current_date
+):
     """Renders the 'Today's Action Plan' section."""
+    st.markdown("---")
+    st.markdown(f"### 🎯 {str(current_date)[:10]} Action Plan")
 
     if current_day < len(dynamic_perf):
         today_data = dynamic_perf.iloc[-1]
-        st.markdown(f"### 🎯 Action Plan for {str(today_data["Date"])[:10]}")
-
         today_weight = today_data["Weight"]
 
         # Determine recommendation type
@@ -58,7 +60,7 @@ def render_recommendations(dynamic_perf, df_current, weights, budget, current_da
             - **Expected BTC:** {today_data["BTC_Bought"]:.8f} ₿
             
             **Technical Analysis:**
-            - **Current Price:** ${today_data["Price"]:,.2f} (as of {today_data["Date"]})
+            - **Current Price:** ${today_data["Price"]:,.2f}
             - **MA200:** ${today_ma200:,.2f}
             - **Price vs MA200:** {((today_data["Price"]/today_ma200 - 1)*100):+.2f}%
             - **Z-Score:** {z_score:.2f}
@@ -70,4 +72,3 @@ def render_recommendations(dynamic_perf, df_current, weights, budget, current_da
             spent_pct = (budget - remaining) / budget
             st.metric("Remaining Budget", f"${remaining:,.2f}")
             st.progress(spent_pct, text=f"{spent_pct*100:.1f}% deployed")
-    st.markdown("---")
