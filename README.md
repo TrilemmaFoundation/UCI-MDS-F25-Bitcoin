@@ -25,3 +25,11 @@ Here are some short bios for each team member.
 **Favorite Hobby or Fun Fact:** I love to investing in stocks, securities and real estate. I hope to one day build a successful technology company. 
 
 ---
+
+### ![Abigail Mori](https://avatars.githubusercontent.com/u/107724346?s=400&u=9c8f54d992bc21d7a7b4b09faa95843edb922917&v=4) ###
+**Name:** Abigail Mori \
+**Undergrad:** University of Connecticut \
+**From:** Honolulu, HI, USA \
+**Favorite Hobby or Fun Fact:** I enjoy running and am training for a half marathon! 
+
+---
