@@ -71,6 +71,15 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
         annotation_position="top left",
     )
 
+    fig.add_vline(
+        x=pd.to_datetime(df_current.index[0]).timestamp() * 1000,
+        line_width=2,
+        line_dash="dot",
+        line_color="grey",
+        annotation_text="Accumulation Start Date",
+        annotation_position="top left",
+    )
+
     # ╔══════════════════════════════════════════════════════════════════╗
     # ║ START OF UPDATED SECTION: PLOTTING HISTORICAL & ACTIVE SIGNALS   ║
     # ╚══════════════════════════════════════════════════════════════════╝
@@ -97,9 +106,9 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
             name="Historical Buy Condition",  # New legend name
             marker=dict(
                 size=6,  # Fixed small size
-                color="orange",  # Different color for distinction
-                symbol="diamond-open",  # Different symbol for clarity
-                opacity=0.7,
+                color="#1CBDE6",  # Different color for distinction
+                symbol="diamond",  # Different symbol for clarity
+                opacity=0.8,
             ),
             hovertemplate="<b>Signal Condition Met</b><br>Price: $%{y:,.2f}<extra></extra>",
         ),
@@ -118,15 +127,15 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
                 x=df_current.index[active_signals],
                 y=df_current.loc[active_signals, "PriceUSD"],
                 mode="markers",
-                name="Executed Buy",  # More descriptive name
+                name="Buy Signal",  # More descriptive name
                 marker=dict(
                     size=weights.loc[df_current.index][active_signals]
-                    * 3000,  # Variable size
+                    * 2000,  # Variable size
                     color="red",  # Original strong color
-                    opacity=0.6,
+                    opacity=0.2,
                     line=dict(width=1, color="darkred"),
                 ),
-                hovertemplate="<b>Executed Buy</b><br>Price: $%{y:,.2f}<br>Weight: %{customdata:.5f}<extra></extra>",
+                hovertemplate="<b>Buy Signal</b><br>Price: $%{y:,.2f}<br>Weight: %{customdata:.5f}<extra></extra>",
                 customdata=weights.loc[df_current.index][
                     active_signals
                 ],  # Add weight to hover text

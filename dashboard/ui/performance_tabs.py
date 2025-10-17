@@ -54,11 +54,11 @@ def render_performance(
         ],
     }
     # Tabs
-    tab1, tab2, tab3, tab4 = st.tabs(
+    tab1, tab2, tab3 = st.tabs(
         [
             "📈 Price & Signals",
             "⚖️ Weight Distribution",
-            "🧠 Bayesian Learning",
+            # "🧠 Bayesian Learning",
             "📊 Strategy Comparison",
         ]
     )
@@ -75,9 +75,9 @@ def render_performance(
         )
     with tab2:
         render_weight_distribution_chart(weights, df_current)
+    # with tab3:
+    #     render_bayesian_learning_chart()
     with tab3:
-        render_bayesian_learning_chart()
-    with tab4:
         render_strategy_comparison_chart(dynamic_perf, uniform_perf)
         render_comparison_summary(
             dynamic_btc,

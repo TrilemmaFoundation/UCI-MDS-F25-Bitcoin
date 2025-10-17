@@ -29,7 +29,7 @@ def render_controls(df_btc, investment_window):
             st.stop()
 
         # Set a reasonable default start date (e.g., today)
-        default_start_date = config.today_raw
+        default_start_date = config.today_raw - pd.DateOffset(months=12)
 
         default_start = max(min_start, default_start_date)
 
@@ -85,7 +85,7 @@ def render_controls(df_btc, investment_window):
 
     # Time Control Panel
     st.markdown("### ⏱️ Time Control")
-    col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+    col1, col2, col3, col4, col5 = st.columns([4, 1, 1, 1, 1])
     with col1:
         current_day = st.slider(
             "Current Day in Period",
@@ -97,19 +97,24 @@ def render_controls(df_btc, investment_window):
         st.session_state.current_day = current_day
     with col2:
         if st.button("⏮️ First", use_container_width=True):
-            st.session_state.current_day = 0
+            st.session_state.current_day = 1
             st.rerun()
     with col3:
+        if st.button("◀️ Prev", use_container_width=True):
+            if st.session_state.current_day > 1:
+                st.session_state.current_day -= 1
+                st.rerun()
+    with col4:
         if st.button("▶️ Next", use_container_width=True):
             if st.session_state.current_day < len(df_window) - 1:
                 st.session_state.current_day += 1
                 st.rerun()
-    with col4:
+    with col5:
         if st.button("⏭️ Last", use_container_width=True):
             st.session_state.current_day = len(df_window) - 1
             st.rerun()
 
-    progress_pct = (current_day + 1) / len(df_window)
+    progress_pct = (current_day) / (len(df_window) - 1)
     st.progress(
         progress_pct,
         text=f"Day {current_day} of {len(df_window) - 1} ({progress_pct*100:.1f}% complete)",

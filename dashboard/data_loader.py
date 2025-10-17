@@ -41,7 +41,8 @@ def get_current_btc_price():
 
 def generate_future_data(historical_df, forecast_days, current_price=None):
     """
-    Generate simulated future price data using Geometric Brownian Motion (GBM).
+    Generate simulated future price data using a modified Geometric Brownian Motion (GBM)
+    with realistic constraints for Bitcoin price projections.
     Forecast starts from TODAY and goes into the future.
 
     Args:
@@ -54,8 +55,23 @@ def generate_future_data(historical_df, forecast_days, current_price=None):
     """
     # Calculate log returns from historical data to find drift and volatility
     log_returns = np.log(historical_df["PriceUSD"] / historical_df["PriceUSD"].shift(1))
-    mu = log_returns.mean()  # Drift
-    sigma = log_returns.std()  # Volatility
+    historical_mu = log_returns.mean()
+    historical_sigma = log_returns.std()
+
+    # Apply modifications for more realistic future projections
+    # 1. Add slight positive bias to drift
+    mu = historical_mu * 0.3  # Significantly reduce drift
+
+    # 2. Dramatically reduce volatility for constrained range
+    sigma = historical_sigma * 0.15  # Only 15% of historical volatility
+
+    # 3. Set maximum daily change limits to prevent large swings
+    max_daily_drop = 0.03  # Maximum 3% daily drop
+    max_daily_gain = 0.03  # Maximum 3% daily gain
+
+    # 4. Set price bounds
+    price_floor = 80000  # Minimum price
+    price_ceiling = 150000  # Maximum price
 
     # Use current price if available, otherwise fall back to last historical price
     if current_price is not None:
@@ -67,21 +83,42 @@ def generate_future_data(historical_df, forecast_days, current_price=None):
 
     # Start forecast from TODAY (current date)
     today = pd.Timestamp.now().normalize()
-
     print(f"Starting forecast from: {today}")
 
     # Create a date range for the forecast period starting TODAY
     future_dates = pd.date_range(start=today, periods=forecast_days)
 
-    # Generate random shocks for the GBM model
-    Z = np.random.standard_normal(size=forecast_days)
-    daily_returns = np.exp(mu - 0.5 * sigma**2 + sigma * Z)
-
-    # Generate the price path starting from today's price
+    # Generate the price path with momentum and mean reversion
     future_prices = np.zeros(forecast_days)
-    future_prices[0] = starting_price * daily_returns[0]
+    future_prices[0] = starting_price
+
+    momentum = 0  # Track short-term momentum
+    momentum_decay = 0.85  # How quickly momentum fades
+
     for t in range(1, forecast_days):
-        future_prices[t] = future_prices[t - 1] * daily_returns[t]
+        # Generate random shock
+        Z = np.random.standard_normal()
+
+        # Calculate daily return with momentum component
+        base_return = mu - 0.5 * sigma**2 + sigma * Z
+        daily_return = base_return + momentum * 0.3
+
+        # Apply bounds to prevent extreme moves
+        daily_return = np.clip(
+            daily_return, np.log(1 - max_daily_drop), np.log(1 + max_daily_gain)
+        )
+
+        # Update price
+        future_prices[t] = future_prices[t - 1] * np.exp(daily_return)
+
+        # Apply hard price bounds
+        future_prices[t] = np.clip(future_prices[t], price_floor, price_ceiling)
+
+        # Update momentum (with decay)
+        momentum = momentum * momentum_decay + daily_return * 0.2
+
+        # Remove occasional positive trend reinforcement
+        # (Keeping range tight)
 
     # Create the forecast DataFrame
     forecast_df = pd.DataFrame({"PriceUSD": future_prices}, index=future_dates)

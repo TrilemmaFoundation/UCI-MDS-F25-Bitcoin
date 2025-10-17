@@ -24,7 +24,7 @@ from ui.recommendations import render_recommendations
 
 def main():
     st.set_page_config(
-        page_title="Bitcoin Bayesian Accumulation Dashboard",
+        page_title="BTC Accumulation Dashboard",
         layout="wide",
         page_icon="₿",
         initial_sidebar_state="expanded",

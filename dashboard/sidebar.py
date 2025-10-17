@@ -11,14 +11,12 @@ def render_sidebar():
 
     with st.sidebar:
         # Logo and branding
-        col1, col2, col3 = st.columns(3)
-        with col2:
-            st.image("dashboard/images/bitcoin_logo.svg")
-        st.title("⚙️ Configuration")
-        st.markdown("---")
+
+        # st.title("⚙️ Configuration")
+        # st.markdown("---")
 
         # Investment Parameters
-        st.markdown("### 💵 Investment Parameters")
+        st.markdown("### Investment Parameters")
 
         budget = st.number_input(
             "Total Budget (USD)",
@@ -60,7 +58,7 @@ def render_sidebar():
         boost_alpha = st.slider(
             "Boost Factor (α)",
             0.5,
-            3.0,
+            5.0,
             1.25,
             0.05,
             help="Controls how aggressively to buy during dips.",
@@ -148,27 +146,27 @@ def render_sidebar():
             """
             )
 
-        with st.expander("🧠 Bayesian Learning"):
-            st.markdown(
-                """
-            The model continuously learns from new data:
-            
-            **How it works:**
-            1. Starts with neutral prior beliefs
-            2. Observes recent price movements
-            3. Updates beliefs using Bayes' theorem
-            4. Confidence increases over time
-            
-            **Key Metrics:**
-            - **Prior Mean**: Expected return
-            - **Prior Variance**: Uncertainty
-            - **Confidence**: 1/Variance
-            
-            As more data arrives, variance decreases 
-            and confidence increases, leading to more 
-            refined predictions.
-            """
-            )
+        # with st.expander("🧠 Bayesian Learning"):
+        #     st.markdown(
+        #         """
+        #     The model continuously learns from new data:
+
+        #     **How it works:**
+        #     1. Starts with neutral prior beliefs
+        #     2. Observes recent price movements
+        #     3. Updates beliefs using Bayes' theorem
+        #     4. Confidence increases over time
+
+        #     **Key Metrics:**
+        #     - **Prior Mean**: Expected return
+        #     - **Prior Variance**: Uncertainty
+        #     - **Confidence**: 1/Variance
+
+        #     As more data arrives, variance decreases
+        #     and confidence increases, leading to more
+        #     refined predictions.
+        #     """
+        #     )
 
         with st.expander("⚠️ Risk Considerations"):
             st.markdown(
