@@ -10,11 +10,10 @@ def render_recommendations(
     """Renders the 'Today's Action Plan' section."""
 
     if current_day < len(dynamic_perf):
-        print(dynamic_perf)
         today_data = dynamic_perf.iloc[-1]
         today = str(current_date - pd.DateOffset(days=1))[:10]
         st.markdown(
-            f"### 🎯 {today} Action Plan: Invest ${today_data["Amount_Spent"]:.2f}"
+            f"### {today} Action Plan: Invest ${today_data["Amount_Spent"]:.2f}"
         )
         today_weight = today_data["Weight"]
         with st.expander("Daily plan details and analysis"):
@@ -55,7 +54,6 @@ def render_recommendations(
 
             col1, col2 = st.columns([2, 1])
             with col1:
-                print(today_data)
                 st.markdown(
                     f"""
                 **Allocation Details:**

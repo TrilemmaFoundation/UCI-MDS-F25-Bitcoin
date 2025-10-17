@@ -11,7 +11,6 @@ today_raw = datetime.today() - timedelta(days=1)
 today_formatted = today_raw.strftime("%Y-%m-%d")
 
 # This now represents the end of REAL historical data.
-print(today_formatted)
 HISTORICAL_END = today_formatted
 
 # New constant for future projection

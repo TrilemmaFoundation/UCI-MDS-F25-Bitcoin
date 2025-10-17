@@ -132,7 +132,7 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
                     size=weights.loc[df_current.index][active_signals]
                     * 2000,  # Variable size
                     color="red",  # Original strong color
-                    opacity=0.2,
+                    opacity=0.4,
                     line=dict(width=1, color="darkred"),
                 ),
                 hovertemplate="<b>Buy Signal</b><br>Price: $%{y:,.2f}<br>Weight: %{customdata:.5f}<extra></extra>",

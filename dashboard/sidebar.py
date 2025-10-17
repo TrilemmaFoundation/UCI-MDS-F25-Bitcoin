@@ -54,7 +54,7 @@ def render_sidebar():
         st.markdown("---")
 
         # Strategy Parameters (code unchanged)
-        st.markdown("### 📊 Strategy Parameters")
+        st.markdown("### Strategy Parameters")
         boost_alpha = st.slider(
             "Boost Factor (α)",
             0.5,

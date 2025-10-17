@@ -84,7 +84,7 @@ def render_controls(df_btc, investment_window):
     st.markdown("---")
 
     # Time Control Panel
-    st.markdown("### ⏱️ Time Control")
+    st.markdown("### Time Control")
     col1, col2, col3, col4, col5 = st.columns([4, 1, 1, 1, 1])
     with col1:
         current_day = st.slider(

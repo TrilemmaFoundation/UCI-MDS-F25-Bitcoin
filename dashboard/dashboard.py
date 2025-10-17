@@ -124,7 +124,7 @@ def main():
     )
 
     st.info(
-        f"💡 **Note:** Price data after **{config.HISTORICAL_END}** is a simulation "
+        f"**Note:** Price data after **{config.HISTORICAL_END}** is a simulation "
         "for forward-looking analysis and is not a financial prediction."
     )
 

@@ -90,7 +90,7 @@ def render_performance(
             spd_advantage,
             dynamic_perf.iloc[-1]["PnL"],
         )
-    st.markdown("<h3>📊 Performance Metrics</h3>", unsafe_allow_html=True)
+    st.markdown("<h3>Performance Metrics</h3>", unsafe_allow_html=True)
 
     st.dataframe(pd.DataFrame(metrics_data), hide_index=True)
     st.markdown("---")
