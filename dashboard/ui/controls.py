@@ -89,15 +89,36 @@ def render_controls(df_btc, investment_window):
 
     st.markdown("---")
 
-    # Time Control Panel
+    # Time Control PanelF
     st.markdown("### Time Control")
-    col1, col2, col3, col4, col5 = st.columns([4, 1, 1, 1, 1])
+
+    # Check if today falls within the window
+    today = config.today_raw
+    window_contains_today = start_ts <= today <= end_ts
+
+    # Calculate which day index corresponds to today if applicable
+    today_day_index = None
+    if window_contains_today:
+        days_from_start = (today - start_ts).days
+        if 1 <= days_from_start < len(df_window):
+            today_day_index = days_from_start + 1
+
+    default_current_day = min(st.session_state.current_day, len(df_window) - 1)
+    if window_contains_today:
+        default_current_day = today_day_index
+
+    # Create columns based on whether "Today" button should be shown
+    if window_contains_today and today_day_index is not None:
+        col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 1, 1, 1, 1])
+    else:
+        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+
     with col1:
         current_day = st.slider(
             "Current Day in Period",
             min_value=1,
             max_value=len(df_window) - 1,
-            value=min(st.session_state.current_day, len(df_window) - 1),
+            value=default_current_day,
             help="Slide to simulate progression through the accumulation period",
         )
         st.session_state.current_day = current_day
@@ -120,11 +141,12 @@ def render_controls(df_btc, investment_window):
             st.session_state.current_day = len(df_window) - 1
             st.rerun()
 
-    progress_pct = (current_day) / (len(df_window) - 1)
-    st.progress(
-        progress_pct,
-        text=f"Day {current_day} of {len(df_window) - 1} ({progress_pct*100:.1f}% complete)",
-    )
+    # Add "Today" button only if today is in the window
+    if window_contains_today and today_day_index is not None:
+        with col6:
+            if st.button("📅 Today", use_container_width=True):
+                st.session_state.current_day = today_day_index
+                st.rerun()
     st.markdown("---")
 
     return start_date, current_day, df_window
