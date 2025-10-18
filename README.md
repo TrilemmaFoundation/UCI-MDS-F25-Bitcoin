@@ -33,3 +33,9 @@ Here are some short bios for each team member.
 **Favorite Hobby or Fun Fact:** I enjoy running and am training for a half marathon! 
 
 ---
+
+### ![Abigail Mori](https://avatars.githubusercontent.com/u/albert0796?s=400&u=9c8f54d992bc21d7a7b4b09faa95843edb922917&v=4) ###
+**Name:**  \
+**Undergrad:**  \
+**From:**  \
+**Favorite Hobby or Fun Fact:** 
