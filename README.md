@@ -1,4 +1,4 @@
-# UCI-MDS-F25-Bitcoin
+<img width="460" height="460" alt="image" src="https://github.com/user-attachments/assets/833b4dbb-3801-42a6-8b37-6df88b68892c" /># UCI-MDS-F25-Bitcoin
 UC Irvine MDS Fall 2025 Bitcoin Capstone
 
 
@@ -34,7 +34,7 @@ Here are some short bios for each team member.
 
 ---
 
-### ![Abigail Mori](https://avatars.githubusercontent.com/u/albert0796?s=400&u=9c8f54d992bc21d7a7b4b09faa95843edb922917&v=4) ###
+### ![Albert Wu](https://avatars.githubusercontent.com/u/53148084?v=4) ###
 **Name:**  \
 **Undergrad:**  \
 **From:**  \
