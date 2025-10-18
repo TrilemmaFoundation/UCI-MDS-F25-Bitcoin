@@ -8,7 +8,7 @@ import os
 # ╚════════════════════════════════════════════════════════╝
 
 BACKTEST_START = "2011-06-01"
-today_raw = datetime.today() - timedelta(days=1)
+today_raw = datetime.today()
 today_formatted = today_raw.strftime("%Y-%m-%d")
 
 # This now represents the end of REAL historical data.
