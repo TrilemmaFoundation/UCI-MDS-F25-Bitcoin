@@ -1,4 +1,4 @@
-<img width="460" height="460" alt="image" src="https://github.com/user-attachments/assets/833b4dbb-3801-42a6-8b37-6df88b68892c" /># UCI-MDS-F25-Bitcoin
+# UCI-MDS-F25-Bitcoin
 UC Irvine MDS Fall 2025 Bitcoin Capstone
 
 
@@ -34,7 +34,7 @@ Here are some short bios for each team member.
 
 ---
 
-### ![Albert Wu](https://avatars.githubusercontent.com/u/53148084?v=4) ###
+### ![Albert Wu](https://avatars.githubusercontent.com/u/53148084?v=4&s=100) ###
 **Name:** Albert Wu\
 **Undergrad:** Soochow University \
 **From:** Taiepi, Taiwan\
