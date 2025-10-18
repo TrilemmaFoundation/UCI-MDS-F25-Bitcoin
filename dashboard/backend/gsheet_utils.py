@@ -36,9 +36,6 @@ cred = {
 creds = ServiceAccountCredentials.from_json_keyfile_dict(cred, scope)
 client = gspread.authorize(creds)
 
-# yesterdays date for writing to gsheet
-yesterday = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
-
 sheet = client.open_by_url(
     "https://docs.google.com/spreadsheets/d/1xOPm_uRawGakD0bc77i_1QoSxwi9Jf3hXz9_822iHP0/edit?gid=0#gid=0"
 )
