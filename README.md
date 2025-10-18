@@ -34,7 +34,7 @@ Here are some short bios for each team member.
 
 ---
 
-### ![Albert Wu](https://avatars.githubusercontent.com/u/53148084?v=4&s=100) ###
+### ![Albert Wu](https://avatars.githubusercontent.com/u/53148084?v=4&s=500) ###
 **Name:** Albert Wu\
 **Undergrad:** Soochow University \
 **From:** Taiepi, Taiwan\
