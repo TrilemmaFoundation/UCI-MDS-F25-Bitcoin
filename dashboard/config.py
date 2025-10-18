@@ -1,6 +1,7 @@
 # config.py
 from datetime import datetime, timedelta
 import pandas as pd
+import os
 
 # ╔════════════════════════════════════════════════════════╗
 # ║  Configuration Constants                               ║
@@ -24,3 +25,8 @@ PURCHASE_FREQ_TO_OFFSET = {
     "Weekly": "7D",
     "Monthly": "1M",
 }
+
+
+GOOGLE_SHEETS_PRIVATE_KEY = os.environ.get("GOOGLE_SHEETS_PRIVATE_KEY")
+GOOGLE_SHEETS_PRIVATE_KEY_ID = os.environ.get("GOOGLE_SHEETS_PRIVATE_KEY_ID")
+GOOGLE_SHEETS_CLIENT_ID = os.environ.get("GOOGLE_SHEETS_CLIENT_ID")
