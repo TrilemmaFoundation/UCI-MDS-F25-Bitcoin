@@ -1,4 +1,6 @@
 import streamlit as st
+from backend.gsheet_utils import get_user_info_by_email
+from ui.update_modal import modal
 
 
 def render_sidebar():
@@ -9,6 +11,14 @@ def render_sidebar():
         Dictionary containing all user-selected parameters
     """
 
+    # if the user is logged in, retrieve their budget info
+    logged_in = False
+    st.session_state.user_info = {}
+    if st.user.get("email"):
+        logged_in = True
+        user_info = get_user_info_by_email(st.user.get("email"))
+        st.session_state.user_info = user_info
+
     with st.sidebar:
         # Logo and branding
 
@@ -17,12 +27,22 @@ def render_sidebar():
 
         # Investment Parameters
         st.markdown("### Investment Parameters")
+        modal()
+
+        default_budg_val = 1000
+        default_invest_window = 12
+        default_boost_val = 1.25
+
+        if logged_in:
+            default_budg_val = int(user_info["budget"])
+            default_invest_window = int(user_info["investment_period"])
+            default_boost_val = float(user_info["boost_factor"])
 
         budget = st.number_input(
             "Total Budget (USD)",
             min_value=100,
             max_value=10_000_000,
-            value=1000,
+            value=default_budg_val,
             step=1_000,
             help="Total amount you want to invest over the accumulation period",
         )
@@ -31,7 +51,7 @@ def render_sidebar():
             "Investment window (months)",
             min_value=1,
             max_value=24,
-            value=12,
+            value=default_invest_window,
             step=1,
             help="Amount of months for your investment period",
         )
@@ -59,7 +79,7 @@ def render_sidebar():
             "Boost Factor (α)",
             0.5,
             5.0,
-            1.25,
+            default_boost_val,
             0.05,
             help="Controls how aggressively to buy during dips.",
         )
