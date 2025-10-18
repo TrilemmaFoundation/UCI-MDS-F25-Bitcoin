@@ -67,7 +67,7 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
         line_width=2,
         line_dash="dot",
         line_color="grey",
-        annotation_text="Forecast Begins",
+        annotation_text="Today",
         annotation_position="top left",
     )
 
