@@ -127,18 +127,25 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
                 x=df_current.index[active_signals],
                 y=df_current.loc[active_signals, "PriceUSD"],
                 mode="markers",
-                name="Buy Signal",  # More descriptive name
+                name="Buy Signal",
                 marker=dict(
-                    size=weights.loc[df_current.index][active_signals]
-                    * 2000,  # Variable size
-                    color="red",  # Original strong color
+                    size=15
+                    + (
+                        weights.loc[df_current.index][active_signals]
+                        - weights.loc[df_current.index][active_signals].min()
+                    )
+                    / (
+                        weights.loc[df_current.index][active_signals].max()
+                        - weights.loc[df_current.index][active_signals].min()
+                        + 1e-10
+                    )
+                    * 25,  # Normalized to 15-40 range
+                    color="red",
                     opacity=0.4,
                     line=dict(width=1, color="darkred"),
                 ),
                 hovertemplate="<b>Buy Signal</b><br>Price: $%{y:,.2f}<br>Weight: %{customdata:.5f}<extra></extra>",
-                customdata=weights.loc[df_current.index][
-                    active_signals
-                ],  # Add weight to hover text
+                customdata=weights.loc[df_current.index][active_signals],
             ),
             row=1,
             col=1,
