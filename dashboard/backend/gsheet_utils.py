@@ -2,7 +2,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import os
 import json
-from config import (
+from dashboard.config import (
     GOOGLE_SHEETS_PRIVATE_KEY,
     GOOGLE_SHEETS_PRIVATE_KEY_ID,
     GOOGLE_SHEETS_CLIENT_ID,

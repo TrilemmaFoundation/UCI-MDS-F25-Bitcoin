@@ -5,21 +5,21 @@ import sys
 
 # --- Local Imports ---
 sys.path.append(".")
-from model.strategy_new import compute_weights
-from sidebar import render_sidebar
+from dashboard.model.strategy_new import compute_weights
+from dashboard.sidebar import render_sidebar
 
-import config
-from data_loader import load_bitcoin_data
-from simulation import (
+import dashboard.config as config
+from dashboard.data_loader import load_bitcoin_data
+from dashboard.simulation import (
     update_bayesian_belief,
     simulate_accumulation,
     calculate_uniform_dca_performance,
 )
-from ui.header import render_header
-from ui.controls import render_controls
-from ui.validation import render_validation
-from ui.performance_tabs import render_performance
-from ui.recommendations import render_recommendations
+from dashboard.ui.header import render_header
+from dashboard.ui.controls import render_controls
+from dashboard.ui.validation import render_validation
+from dashboard.ui.performance_tabs import render_performance
+from dashboard.ui.recommendations import render_recommendations
 
 
 def main():

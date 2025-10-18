@@ -3,8 +3,8 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from model.strategy_new import construct_features  # Assumes this file exists
-import config
+from dashboard.model.strategy_new import construct_features  # Assumes this file exists
+import dashboard.config as config
 
 
 def render_price_signals_chart(df_chart_display, df_current, weights, df_window):

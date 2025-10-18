@@ -1,7 +1,7 @@
 # ui/performance_tabs.py
 import streamlit as st
 import pandas as pd
-from ui.charts import (
+from dashboard.ui.charts import (
     render_price_signals_chart,
     render_weight_distribution_chart,
     render_bayesian_learning_chart,

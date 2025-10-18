@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import requests
 from io import StringIO
-from config import BACKTEST_START, HISTORICAL_END, MAX_FORECAST_DAYS
+from dashboard.config import BACKTEST_START, HISTORICAL_END, MAX_FORECAST_DAYS
 
 
 def get_current_btc_price():

@@ -1,5 +1,5 @@
 import streamlit as st
-from backend.gsheet_utils import add_user_info_to_sheet, does_user_exist
+from dashboard.backend.gsheet_utils import add_user_info_to_sheet, does_user_exist
 from datetime import datetime
 
 
@@ -85,7 +85,7 @@ def authenticate():
             .logout-button {
                 margin-top: 12px;
                 width: 100%;
-                background: #f44336;
+                background: #1a080e;
                 color: white;
                 border: none;
                 padding: 8px 16px;
@@ -95,7 +95,7 @@ def authenticate():
                 font-family: inherit;
             }
             .logout-button:hover {
-                background: #d32f2f;
+                background: #153d4d;
             }
         </style>
         """,

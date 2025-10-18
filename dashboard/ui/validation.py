@@ -1,7 +1,7 @@
 # ui/validation.py
 import streamlit as st
 import numpy as np
-from config import MIN_WEIGHT
+from dashboard.config import MIN_WEIGHT
 
 
 def render_validation(weights, dynamic_perf, budget, current_day):

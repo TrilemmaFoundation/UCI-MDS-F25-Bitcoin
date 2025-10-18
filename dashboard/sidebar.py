@@ -1,6 +1,6 @@
 import streamlit as st
-from backend.gsheet_utils import get_user_info_by_email
-from ui.update_modal import modal
+from dashboard.backend.gsheet_utils import get_user_info_by_email
+from dashboard.ui.update_modal import modal
 
 
 def render_sidebar():

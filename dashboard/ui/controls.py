@@ -1,7 +1,7 @@
 # ui/controls.py
 import streamlit as st
 import pandas as pd
-import config
+import dashboard.config as config
 from datetime import datetime
 
 

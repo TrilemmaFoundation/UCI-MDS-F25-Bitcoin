@@ -1,7 +1,7 @@
 # ui/recommendations.py
 import streamlit as st
 import pandas as pd
-from model.strategy_new import construct_features  # Assumes this file exists
+from dashboard.model.strategy_new import construct_features  # Assumes this file exists
 
 
 def render_recommendations(

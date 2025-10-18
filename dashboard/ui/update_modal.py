@@ -1,5 +1,5 @@
 import streamlit as st
-from backend.gsheet_utils import update_user_preferences
+from dashboard.backend.gsheet_utils import update_user_preferences
 import time
 
 
