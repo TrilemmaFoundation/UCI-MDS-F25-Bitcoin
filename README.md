@@ -30,6 +30,13 @@ Here are some short bios for each team member.
 **Name:** Abigail Mori \
 **Undergrad:** University of Connecticut \
 **From:** Honolulu, HI, USA \
-**Favorite Hobby or Fun Fact:** I enjoy running and am training for a half marathon! 
+**Favorite Hobby or Fun Fact:** I enjoy running and am training for a half marathon! \
+**LinkedIn:** https://www.linkedin.com/in/abigailmori/
 
 ---
+
+### ![Albert Wu](https://avatars.githubusercontent.com/u/53148084?v=4&s=300) ###
+**Name:** Albert Wu\
+**Undergrad:** Soochow University \
+**From:** Taipei, Taiwan\
+**Favorite Hobby or Fun Fact:** I love the mountains. Hiking and camping in the wild is pure joy.
