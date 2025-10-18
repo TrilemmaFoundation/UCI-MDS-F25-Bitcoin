@@ -1,5 +1,5 @@
 import streamlit as st
-from ui.authentication import authenticate
+from dashboard.ui.authentication import authenticate
 
 
 def initialize_user_session():
