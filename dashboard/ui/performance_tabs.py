@@ -14,7 +14,13 @@ from dashboard.model.strategy_new import construct_features
 
 
 def render_performance(
-    df_window, weights, dynamic_perf, uniform_perf, current_day, df_for_chart, model_choice=None
+    df_window,
+    weights,
+    dynamic_perf,
+    uniform_perf,
+    current_day,
+    df_for_chart,
+    model_choice=None,
 ):
     """
     Renders key metrics and the main tab layout for visualizations.
@@ -24,7 +30,9 @@ def render_performance(
     # Display model information
     if model_choice:
         if model_choice == "GT-MSA-S25-Trilemma Model":
-            st.success("🎯 **Using GT-MSA-S25-Trilemma Model** - Final Score: 94.5% | Win Rate: 99.4%")
+            st.success(
+                "🎯 **Using GT-MSA-S25-Trilemma Model** - Final Score: 94.5% | Win Rate: 99.4%"
+            )
         else:
             st.info(f"📊 **Using {model_choice}**")
 
@@ -40,10 +48,10 @@ def render_performance(
     spd_advantage = (
         ((dynamic_spd - uniform_spd) / uniform_spd * 100) if uniform_spd > 0 else 0
     )
-
+    current_date = str(df_window.index[current_day] - pd.DateOffset(days=1))[:10]
     metrics_data = {
         "Metric": [
-            "'Current' BTC Price",
+            f"{current_date} BTC Price",
             "Total BTC (Dynamic)",
             "Portfolio Value",
             "Profit / Loss",
@@ -102,12 +110,7 @@ def render_performance(
             dynamic_perf.iloc[-1]["PnL"],
         )
     with tab4:
-        render_purchasing_calendar(
-            df_current, 
-            dynamic_perf, 
-            weights, 
-            current_day
-        )
+        render_purchasing_calendar(df_current, dynamic_perf, weights, current_day)
     st.markdown("<h3>Performance Metrics</h3>", unsafe_allow_html=True)
 
     st.dataframe(pd.DataFrame(metrics_data), hide_index=True)
@@ -164,69 +167,71 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
     Shows BTC price, buy indicators, and amount purchased for each day.
     """
     # Only show past days and current day (no future days)
-    current_data = dynamic_perf.iloc[:current_day + 1].copy()
-    
+    current_data = dynamic_perf.iloc[: current_day + 1].copy()
+
     if current_data.empty:
         st.info("No purchasing data available for the selected time period.")
         return
-    
+
     # Get features for price analysis
     try:
         features = construct_features(df_current)
     except Exception as e:
         st.error(f"Error constructing features: {e}")
         return
-    
+
     st.markdown("### 📅 Daily Purchasing Schedule")
     st.markdown("*Invest $ Daily plan details and analysis*")
-    
+
     # Calculate average weight for signal determination
     avg_weight = weights.mean() if len(weights) > 0 else 0
-    
+
     # Get the date range for the calendar
-    start_date = current_data.iloc[0]['Date']
-    end_date = current_data.iloc[-1]['Date']
-    
+    start_date = current_data.iloc[0]["Date"]
+    end_date = current_data.iloc[-1]["Date"]
+
     # Create calendar view
     calendar_container = st.container()
-    
+
     with calendar_container:
         # Group data by month and year for better organization
-        current_data['YearMonth'] = current_data['Date'].dt.to_period('M')
-        
-        for period in sorted(current_data['YearMonth'].unique()):
-            month_data = current_data[current_data['YearMonth'] == period]
-            month_start = month_data.iloc[0]['Date']
-            
+        current_data["YearMonth"] = current_data["Date"].dt.to_period("M")
+
+        for period in sorted(current_data["YearMonth"].unique()):
+            month_data = current_data[current_data["YearMonth"] == period]
+            month_start = month_data.iloc[0]["Date"]
+
             # Display month header
             st.markdown(f"### {month_start.strftime('%B %Y')}")
-            
+
             # Create calendar grid for the month
             month_year = period.to_timestamp()
             first_day = month_year.replace(day=1)
-            
+
             # Get the number of days in the month and the starting weekday
             days_in_month = cal_module.monthrange(first_day.year, first_day.month)[1]
             first_weekday = first_day.weekday()  # Monday = 0, Sunday = 6
-            
+
             # Create month view with day cells
-            day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-            
+            day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
             # Day headers
             header_cols = st.columns(7)
             for i, day_name in enumerate(day_names):
                 with header_cols[i]:
                     st.markdown(f"**{day_name}**")
-            
+
             # Create calendar grid - we'll build it week by week
-            total_cells = first_weekday + days_in_month  # Total cells needed (empty + days)
+            total_cells = (
+                first_weekday + days_in_month
+            )  # Total cells needed (empty + days)
             num_weeks = (total_cells + 6) // 7  # Number of weeks to display
-            
+
             for week in range(num_weeks):
                 cols = st.columns(7)
                 for day_of_week in range(7):
                     cell_num = week * 7 + day_of_week
-                    
+
                     with cols[day_of_week]:
                         if cell_num < first_weekday:
                             # Empty cell before month starts
@@ -235,24 +240,26 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
                             # Day within the month
                             day_num = cell_num - first_weekday + 1
                             current_date = first_day.replace(day=day_num)
-                            
+
                             # Check if this date has purchasing data
-                            day_data = month_data[month_data['Date'].dt.date == current_date.date()]
-                            
+                            day_data = month_data[
+                                month_data["Date"].dt.date == current_date.date()
+                            ]
+
                             if not day_data.empty:
                                 # Get the latest data for this day (in case of duplicates)
                                 day_info = day_data.iloc[-1]
-                                
+
                                 # Get price analysis
-                                price = day_info['Price']
-                                amount_spent = day_info['Amount_Spent']
-                                weight = day_info['Weight']
-                                
+                                price = day_info["Price"]
+                                amount_spent = day_info["Amount_Spent"]
+                                weight = day_info["Weight"]
+
                                 # Determine buy signal color and indicator
                                 signal_color = "gray"
                                 signal_emoji = "⚪"
                                 signal_text = "Normal"
-                                
+
                                 if weight > avg_weight * 2:
                                     signal_color = "green"
                                     signal_emoji = "🟢"
@@ -269,7 +276,7 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
                                     signal_color = "red"
                                     signal_emoji = "🔴"
                                     signal_text = "Reduced"
-                                
+
                                 # Create day cell with styling
                                 day_style = f"""
                                 <div style="
@@ -300,7 +307,8 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
                                 # No data for this day - only show if it's past or current day
                                 if current_date.date() <= datetime.now().date():
                                     # Past day with no data (weekend or holiday)
-                                    st.markdown(f"""
+                                    st.markdown(
+                                        f"""
                                     <div style="
                                         border: 1px solid #ccc;
                                         border-radius: 8px;
@@ -317,26 +325,39 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
                                             No Purchase
                                         </div>
                                     </div>
-                                    """, unsafe_allow_html=True)
+                                    """,
+                                        unsafe_allow_html=True,
+                                    )
                                 else:
                                     # Future day - don't show
                                     st.markdown("")
                         else:
                             # Empty cell after month ends
                             st.markdown("")
-            
+
             st.markdown("---")  # Separator between months
-        
+
         # Add legend
         st.markdown("#### Legend")
         legend_cols = st.columns(5)
         with legend_cols[0]:
-            st.markdown("🟢 **Strong Buy**<br/>Price significantly below trend", unsafe_allow_html=True)
+            st.markdown(
+                "🟢 **Strong Buy**<br/>Price significantly below trend",
+                unsafe_allow_html=True,
+            )
         with legend_cols[1]:
-            st.markdown("🟠 **Moderate Buy**<br/>Price below trend", unsafe_allow_html=True)
+            st.markdown(
+                "🟠 **Moderate Buy**<br/>Price below trend", unsafe_allow_html=True
+            )
         with legend_cols[2]:
-            st.markdown("🟡 **Light Buy**<br/>Slightly favorable conditions", unsafe_allow_html=True)
+            st.markdown(
+                "🟡 **Light Buy**<br/>Slightly favorable conditions",
+                unsafe_allow_html=True,
+            )
         with legend_cols[3]:
-            st.markdown("🔴 **Reduced**<br/>Above trend, reduced allocation", unsafe_allow_html=True)
+            st.markdown(
+                "🔴 **Reduced**<br/>Above trend, reduced allocation",
+                unsafe_allow_html=True,
+            )
         with legend_cols[4]:
             st.markdown("⚪ **Normal**<br/>Standard allocation", unsafe_allow_html=True)
