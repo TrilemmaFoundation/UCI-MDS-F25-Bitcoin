@@ -1,2 +1,2 @@
 *.pyc
-.streamlit/secrets.toml
+dashboard/.streamlit/secrets.toml
