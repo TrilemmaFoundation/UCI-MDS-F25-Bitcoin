@@ -1,3 +1,4 @@
 *.pyc
 dashboard/.streamlit/secrets.toml
 streamlit-env.txt
+*__pycache__
