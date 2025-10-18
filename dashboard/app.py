@@ -1,11 +1,21 @@
 import streamlit as st
+from ui.authentication import authenticate
 
 
-with st.sidebar:
-    col1, col2, col3 = st.columns(3)
+def initialize_user_session():
+    """Initialize user session and tracking."""
+    # Authenticate user first
+    authenticate()
 
-    with col2:
-        st.image("dashboard/images/bitcoin_logo.svg")
+    # Get user email and create/update user record
+    user_email = st.user.get("email")
+    user_name = st.user.get("name", "")
+
+    return user_email, user_name
+
+
+initialize_user_session()
+
 
 pg = st.navigation(["Dashboard.py", "About.py"])
 pg.run()
