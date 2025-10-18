@@ -17,5 +17,5 @@ def initialize_user_session():
 initialize_user_session()
 
 
-pg = st.navigation(["Dashboard.py", "About.py"])
+pg = st.navigation(["dashboard/Dashboard.py", "dashboard/About.py"])
 pg.run()
