@@ -43,7 +43,7 @@ def render_sidebar():
             min_value=100,
             max_value=10_000_000,
             value=default_budg_val,
-            step=1_000,
+            step=100,
             help="Total amount you want to invest over the accumulation period",
         )
 
@@ -79,14 +79,14 @@ def render_sidebar():
             "Choose Strategy Model",
             options=["Current Model", "GT-MSA-S25-Trilemma Model"],
             index=0,
-            help="Select which Bitcoin accumulation model to use"
+            help="Select which Bitcoin accumulation model to use",
         )
-        
+
         st.markdown("---")
 
         # Strategy Parameters (code unchanged)
         st.markdown("### Strategy Parameters")
-        
+
         # Only show boost_alpha for current model
         if model_choice == "Current Model":
             boost_alpha = st.slider(
@@ -100,7 +100,9 @@ def render_sidebar():
         else:
             # For GT model, set a default (model doesn't use this parameter)
             boost_alpha = 1.25
-            st.info("ℹ️ GT-MSA-S25-Trilemma model uses optimized parameters (94.5% final score)")
+            st.info(
+                "ℹ️ GT-MSA-S25-Trilemma model uses optimized parameters (94.5% final score)"
+            )
 
         # Show boost factor interpretation only for current model
         if model_choice == "Current Model":
