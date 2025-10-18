@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import config
+from datetime import datetime
 
 
 def render_controls(df_btc, investment_window):
@@ -32,6 +33,11 @@ def render_controls(df_btc, investment_window):
         default_start_date = config.today_raw - pd.DateOffset(months=12)
 
         default_start = max(min_start, default_start_date)
+
+        if st.session_state.user_info != {}:
+            default_start = datetime.strptime(
+                st.session_state.user_info["start_date"], "%Y-%m-%d"
+            )
 
         start_date = st.date_input(
             "Accumulation Start Date",
