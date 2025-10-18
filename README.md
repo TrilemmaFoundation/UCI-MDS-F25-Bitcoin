@@ -37,5 +37,5 @@ Here are some short bios for each team member.
 ### ![Albert Wu](https://avatars.githubusercontent.com/u/53148084?v=4&s=300) ###
 **Name:** Albert Wu\
 **Undergrad:** Soochow University \
-**From:** Taiepi, Taiwan\
+**From:** Taipei, Taiwan\
 **Favorite Hobby or Fun Fact:** I love the mountains. Hiking and camping in the wild is pure joy.
