@@ -8,6 +8,7 @@ print()
 # --- Local Imports ---
 sys.path.append(".")
 from dashboard.model.strategy_new import compute_weights
+from dashboard.model.strategy_gt import compute_weights as compute_weights_gt
 from dashboard.sidebar import render_sidebar
 
 import dashboard.config as config
@@ -49,8 +50,13 @@ def main():
     )
 
     # --- Core Logic: Strategy Calculation ---
-    with st.spinner("🧮 Computing dynamic weights..."):
-        weights = compute_weights(df_window, boost_alpha=params["boost_alpha"])
+    model_choice = params.get("model_choice", "Current Model")
+    
+    with st.spinner(f"🧮 Computing dynamic weights using {model_choice}..."):
+        if model_choice == "GT-MSA-S25-Trilemma Model":
+            weights = compute_weights_gt(df_window)
+        else:
+            weights = compute_weights(df_window, boost_alpha=params["boost_alpha"])
 
     dynamic_perf = simulate_accumulation(
         df_window, weights, params["budget"], current_day
@@ -72,12 +78,22 @@ def main():
             obs_var = df_for_learning["PriceUSD"].pct_change().var()
 
             if obs_var > 0:
+                # Ensure prior parameters exist in session state
+                if "prior_mean" not in st.session_state:
+                    st.session_state.prior_mean = 0.0
+                if "prior_var" not in st.session_state:
+                    st.session_state.prior_var = 1.0
+                    
                 new_mean, new_var = update_bayesian_belief(
                     st.session_state.prior_mean,
                     st.session_state.prior_var,
                     recent_return,
                     obs_var,
                 )
+                # Ensure bayesian_history exists and is initialized
+                if "bayesian_history" not in st.session_state:
+                    st.session_state.bayesian_history = []
+                    
                 if (
                     not st.session_state.bayesian_history
                     or st.session_state.bayesian_history[-1]["day"] != current_day
@@ -123,6 +139,7 @@ def main():
         uniform_perf=uniform_perf,
         current_day=current_day,
         df_for_chart=df_for_chart,  # Pass the new extended DataFrame
+        model_choice=model_choice,  # Pass model choice
     )
 
     st.info(

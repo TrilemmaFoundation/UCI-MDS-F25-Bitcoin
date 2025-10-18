@@ -7,3 +7,4 @@ streamlit-plotly-events
 authlib
 gspread
 oauth2client
+scipy

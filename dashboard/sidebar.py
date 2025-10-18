@@ -73,28 +73,47 @@ def render_sidebar():
         )
         st.markdown("---")
 
+        # Model Selection
+        st.markdown("### Model Selection")
+        model_choice = st.selectbox(
+            "Choose Strategy Model",
+            options=["Current Model", "GT-MSA-S25-Trilemma Model"],
+            index=0,
+            help="Select which Bitcoin accumulation model to use"
+        )
+        
+        st.markdown("---")
+
         # Strategy Parameters (code unchanged)
         st.markdown("### Strategy Parameters")
-        boost_alpha = st.slider(
-            "Boost Factor (α)",
-            0.5,
-            5.0,
-            default_boost_val,
-            0.05,
-            help="Controls how aggressively to buy during dips.",
-        )
-
-        # Show boost factor interpretation
-        if boost_alpha < 1.0:
-            boost_desc = "Conservative - Minimal deviation from DCA"
-        elif boost_alpha < 1.5:
-            boost_desc = "Moderate - Balanced approach"
-        elif boost_alpha < 2.0:
-            boost_desc = "Aggressive - Strong dip buying"
+        
+        # Only show boost_alpha for current model
+        if model_choice == "Current Model":
+            boost_alpha = st.slider(
+                "Boost Factor (α)",
+                0.5,
+                5.0,
+                default_boost_val,
+                0.05,
+                help="Controls how aggressively to buy during dips.",
+            )
         else:
-            boost_desc = "Very Aggressive - Maximum dip concentration"
+            # For GT model, set a default (model doesn't use this parameter)
+            boost_alpha = 1.25
+            st.info("ℹ️ GT-MSA-S25-Trilemma model uses optimized parameters (94.5% final score)")
 
-        st.caption(f"*{boost_desc}*")
+        # Show boost factor interpretation only for current model
+        if model_choice == "Current Model":
+            if boost_alpha < 1.0:
+                boost_desc = "Conservative - Minimal deviation from DCA"
+            elif boost_alpha < 1.5:
+                boost_desc = "Moderate - Balanced approach"
+            elif boost_alpha < 2.0:
+                boost_desc = "Aggressive - Strong dip buying"
+            else:
+                boost_desc = "Very Aggressive - Maximum dip concentration"
+
+            st.caption(f"*{boost_desc}*")
 
         st.markdown("---")
 
@@ -102,21 +121,42 @@ def render_sidebar():
         # Information Section
         # ════════════════════════════════════════════════════════
         with st.expander("ℹ️ About This Strategy"):
-
-            st.markdown(
+            if model_choice == "Current Model":
+                st.markdown(
+                    """
+                **Dynamic Buy-The-Dip Approach**
+                
+                This strategy intelligently adjusts daily Bitcoin purchases based on:
+                
+                🎯 **Key Features:**
+                - 📉 Detects when price drops below 200-day MA
+                - 📊 Measures dip significance using Z-scores
+                - 💰 Allocates more capital during larger dips
+                - ⚖️ Redistributes from future periods
+                - 🎲 Updates beliefs using Bayesian inference
                 """
-            **Dynamic Buy-The-Dip Approach**
-            
-            This strategy intelligently adjusts daily Bitcoin purchases based on:
-            
-            🎯 **Key Features:**
-            - 📉 Detects when price drops below 200-day MA
-            - 📊 Measures dip significance using Z-scores
-            - 💰 Allocates more capital during larger dips
-            - ⚖️ Redistributes from future periods
-            - 🎲 Updates beliefs using Bayesian inference
-            """
-            )
+                )
+            else:
+                st.markdown(
+                    """
+                **GT-MSA-S25-Trilemma Model (94.5% Final Score)**
+                
+                This sophisticated two-layer system achieved exceptional performance:
+                
+                🎯 **Key Features:**
+                - 🧠 Strategic Layer: Annual investment planning using 5 momentum signals
+                - ⚡ Tactical Layer: Daily adjustments based on market conditions
+                - 📈 99.4% win rate against uniform DCA since 2011
+                - 🔄 Multi-scale cyclical awareness (30d to 4-year signals)
+                - 🎯 23 optimized parameters from rigorous backtesting
+                
+                **Performance Metrics:**
+                - Final Score: 94.5%
+                - Win Rate: 99.4%
+                - Reward-Weighted Percentile: 89.55%
+                - Tested on 4,750+ rolling 365-day windows
+                """
+                )
 
         # Expandable sections for detailed info
         with st.expander("📚 Technical Indicators"):
@@ -247,4 +287,5 @@ def render_sidebar():
         "daily_avg": daily_avg,
         "monthly_avg": monthly_avg,
         "investment_window": investment_window,
+        "model_choice": model_choice,
     }
