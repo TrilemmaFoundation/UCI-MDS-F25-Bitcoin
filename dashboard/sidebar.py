@@ -77,7 +77,7 @@ def render_sidebar():
         st.markdown("### Model Selection")
         model_choice = st.selectbox(
             "Choose Strategy Model",
-            options=["Current Model", "GT-MSA-S25-Trilemma Model"],
+            options=["Base Model", "GT-MSA-S25-Trilemma Model"],
             index=0,
             help="Select which Bitcoin accumulation model to use",
         )
@@ -88,7 +88,7 @@ def render_sidebar():
         st.markdown("### Strategy Parameters")
 
         # Only show boost_alpha for current model
-        if model_choice == "Current Model":
+        if model_choice == "Base Model":
             boost_alpha = st.slider(
                 "Boost Factor (α)",
                 0.5,
@@ -96,6 +96,9 @@ def render_sidebar():
                 default_boost_val,
                 0.05,
                 help="Controls how aggressively to buy during dips.",
+            )
+            st.info(
+                "ℹ️ Choose your boost factor for the base model (71.6% final score with α=1.25)"
             )
         else:
             # For GT model, set a default (model doesn't use this parameter)
@@ -105,7 +108,7 @@ def render_sidebar():
             )
 
         # Show boost factor interpretation only for current model
-        if model_choice == "Current Model":
+        if model_choice == "Base Model":
             if boost_alpha < 1.0:
                 boost_desc = "Conservative - Minimal deviation from DCA"
             elif boost_alpha < 1.5:
@@ -123,7 +126,7 @@ def render_sidebar():
         # Information Section
         # ════════════════════════════════════════════════════════
         with st.expander("ℹ️ About This Strategy"):
-            if model_choice == "Current Model":
+            if model_choice == "Base Model":
                 st.markdown(
                     """
                 **Dynamic Buy-The-Dip Approach**
