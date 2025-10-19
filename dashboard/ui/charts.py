@@ -195,7 +195,7 @@ def render_weight_distribution_chart(weights, df_current):
     with col4:
         st.metric("Std Dev", f"{weights.std():.6f}")
 
-    # This chart was incomplete in the original file, so I'm creating a simple bar chart.
+    # Weight distribution bar chart
     fig = go.Figure()
     fig.add_trace(
         go.Bar(

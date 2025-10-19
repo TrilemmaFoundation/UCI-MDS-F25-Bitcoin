@@ -1,4 +1,4 @@
-# model/strategy.py
+# model/strategy_new.py
 """
 Dynamic Buy-The-Dip Bitcoin Accumulation Strategy
 
@@ -88,23 +88,20 @@ def compute_weights(df_window: pd.DataFrame, boost_alpha: float = 1.25) -> pd.Se
     if total_days == 0:
         return pd.Series(dtype=float)
 
-    # 2. Prepare output Series
-    weights = pd.Series(index=dates, dtype=float)
-
-    # 3. Strategy parameters
+    # 2. Strategy parameters
     # Rebalancing window: last half of the investment period
     rebalance_window = max(total_days // 2, 1)
 
-    # 4. Initialize equal weights (uniform DCA baseline)
+    # 3. Initialize equal weights (uniform DCA baseline)
     base_weight = 1.0 / total_days
     temp_weights = np.full(total_days, base_weight, dtype=float)
 
-    # 5. Extract numpy arrays for speed (vectorization optimization)
+    # 4. Extract numpy arrays for speed (vectorization optimization)
     price_array = features["PriceUSD"].values
     ma200_array = features["ma200"].values
     std200_array = features["std200"].values
 
-    # 6. Main loop: Identify buy opportunities and boost weights
+    # 5. Main loop: Identify buy opportunities and boost weights
     for day_idx in range(total_days):
         price = price_array[day_idx]
         ma200 = ma200_array[day_idx]
@@ -150,7 +147,7 @@ def compute_weights(df_window: pd.DataFrame, boost_alpha: float = 1.25) -> pd.Se
     # FIX: Use iloc instead of loc to ensure proper alignment
     weights.iloc[:] = temp_weights
 
-    # Validation: Ensure weights sum to approximately 1.0
+    # 7. Validation: Ensure weights sum to approximately 1.0
     weight_sum = weights.sum()
     if not np.isclose(weight_sum, 1.0, rtol=1e-5, atol=1e-8):
         # This should rarely happen with correct implementation
