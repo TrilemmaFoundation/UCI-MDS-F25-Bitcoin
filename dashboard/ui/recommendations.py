@@ -13,7 +13,7 @@ def render_recommendations(
         today_data = dynamic_perf.iloc[-1]
         today = str(current_date - pd.DateOffset(days=1))[:10]
         st.markdown(
-            f"### {today} Action Plan: Invest ${today_data["Amount_Spent"]:.2f}"
+            f"### {today} Action Plan: Invest ${today_data['Amount_Spent']:.2f}"
         )
         today_weight = today_data["Weight"]
         with st.expander("Daily plan details and analysis"):
