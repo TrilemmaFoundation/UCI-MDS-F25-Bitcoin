@@ -129,12 +129,6 @@ def get_user_info_by_email(user_email: str):
         return None
 
 
-# Usage
-# user_info = get_user_info_by_email("smaueltown@gmail.com")
-# if user_info:
-#     print(user_info)
-
-
 def update_user_preferences(new_user_info: dict):
     try:
         # Find the cell containing the email
