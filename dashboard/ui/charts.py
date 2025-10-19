@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from dashboard.model.strategy_new import construct_features  # Assumes this file exists
+from dashboard.model.strategy_new import construct_features
 import dashboard.config as config
 
 
@@ -27,7 +27,7 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
         subplot_titles=("Price & MA200", "Daily Weights"),
     )
 
-    # Plotting Price and MA200 lines using the full df_chart_display (Unchanged)
+    # Plotting Price and MA200 lines using the full df_chart_display
     hist_data = df_chart_display[df_chart_display["Type"] == "Historical"]
     forecast_data = df_chart_display[df_chart_display["Type"] == "Forecast"]
 
@@ -80,82 +80,125 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
         annotation_position="top left",
     )
 
-    # ╔══════════════════════════════════════════════════════════════════╗
-    # ║ START OF UPDATED SECTION: PLOTTING HISTORICAL & ACTIVE SIGNALS   ║
-    # ╚══════════════════════════════════════════════════════════════════╝
+    # ╔═══════════════════════════════════════════════════════════════╗
+    # ║ FIXED: PLOTTING HISTORICAL & ACTIVE SIGNALS                   ║
+    # ╚═══════════════════════════════════════════════════════════════╝
 
     # --- 1. Plot Historical Context Signals (fixed size) ---
-    # Isolate the part of the chart that comes BEFORE the user's selected window
     window_start_date = df_window.index[0]
     historical_context_df = df_chart_display.loc[
         df_chart_display.index < window_start_date
-    ]
+        ]
 
-    # Find where the buy condition was met in that historical period
-    historical_signals = (
-        historical_context_df["PriceUSD"]
-        < features.loc[historical_context_df.index, "ma200"]
-    )
+    if not historical_context_df.empty:
+        # FIX: Create a temporary aligned DataFrame
+        try:
+            common_hist_index = historical_context_df.index.intersection(features.index)
 
-    # Add a trace for these historical signals with a distinct, fixed-size marker
-    fig.add_trace(
-        go.Scatter(
-            x=historical_context_df.index[historical_signals],
-            y=historical_context_df.loc[historical_signals, "PriceUSD"],
-            mode="markers",
-            name="Historical Buy Condition",  # New legend name
-            marker=dict(
-                size=6,  # Fixed small size
-                color="#1CBDE6",  # Different color for distinction
-                symbol="diamond",  # Different symbol for clarity
-                opacity=0.8,
-            ),
-            hovertemplate="<b>Signal Condition Met</b><br>Price: $%{y:,.2f}<extra></extra>",
-        ),
-        row=1,
-        col=1,
-    )
+            if len(common_hist_index) > 0:
+                # Create aligned DataFrame
+                hist_temp_df = pd.DataFrame({
+                    'price': historical_context_df.loc[common_hist_index, "PriceUSD"],
+                    'ma200': features.loc[common_hist_index, "ma200"]
+                }, index=common_hist_index)
+
+                # Remove NaN values
+                hist_temp_df = hist_temp_df.dropna()
+
+                # Do comparison
+                historical_signals_array = hist_temp_df['price'] < hist_temp_df['ma200']
+                signal_indices = hist_temp_df.index[historical_signals_array]
+            else:
+                signal_indices = pd.Index([])
+        except Exception as e:
+            print(f"Error processing historical signals: {e}")
+            signal_indices = pd.Index([])
+
+        if len(signal_indices) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=signal_indices,
+                    y=historical_context_df.loc[signal_indices, "PriceUSD"],
+                    mode="markers",
+                    name="Historical Buy Condition",
+                    marker=dict(
+                        size=6,
+                        color="#1CBDE6",
+                        symbol="diamond",
+                        opacity=0.8,
+                    ),
+                    hovertemplate="<b>Signal Condition Met</b><br>Price: $%{y:,.2f}<extra></extra>",
+                ),
+                row=1,
+                col=1,
+            )
 
     # --- 2. Plot Active Window Signals (variable size) ---
-    # This shows the actual buys executed by the simulation in the selected window.
-    active_signals = df_current["PriceUSD"] < features.loc[df_current.index, "ma200"]
+    if not df_current.empty:
+        # FIX: Create a temporary aligned DataFrame to ensure everything matches
+        try:
+            # Get overlapping indices
+            common_index = df_current.index.intersection(features.index)
 
-    # We need to handle the case where there are no active signals yet to avoid errors
-    if active_signals.any():
-        fig.add_trace(
-            go.Scatter(
-                x=df_current.index[active_signals],
-                y=df_current.loc[active_signals, "PriceUSD"],
-                mode="markers",
-                name="Buy Signal",
-                marker=dict(
-                    size=15
-                    + (
-                        weights.loc[df_current.index][active_signals]
-                        - weights.loc[df_current.index][active_signals].min()
-                    )
-                    / (
-                        weights.loc[df_current.index][active_signals].max()
-                        - weights.loc[df_current.index][active_signals].min()
-                        + 1e-10
-                    )
-                    * 25,  # Normalized to 15-40 range
-                    color="red",
-                    opacity=0.4,
-                    line=dict(width=1, color="darkred"),
-                ),
-                hovertemplate="<b>Buy Signal</b><br>Price: $%{y:,.2f}<br>Weight: %{customdata:.5f}<extra></extra>",
-                customdata=weights.loc[df_current.index][active_signals],
-            ),
-            row=1,
-            col=1,
-        )
+            if len(common_index) > 0:
+                # Create a temporary DataFrame with aligned data
+                temp_df = pd.DataFrame({
+                    'price': df_current.loc[common_index, "PriceUSD"],
+                    'ma200': features.loc[common_index, "ma200"]
+                }, index=common_index)
 
-    # ╔══════════════════════════════════════════════════════════════════╗
-    # ║ END OF UPDATED SECTION                                           ║
-    # ╚══════════════════════════════════════════════════════════════════╝
+                # Remove any NaN values
+                temp_df = temp_df.dropna()
 
-    # Weights plot only for the active window (Unchanged)
+                # Now do the comparison on the cleaned data
+                active_signals_array = temp_df['price'] < temp_df['ma200']
+
+                # Get indices where signals are active
+                active_signal_indices = temp_df.index[active_signals_array]
+            else:
+                active_signal_indices = pd.Index([])
+        except Exception as e:
+            print(f"Error processing active signals: {e}")
+            active_signal_indices = pd.Index([])
+
+        if len(active_signal_indices) > 0:
+            # Get weights for signal days - ensure they exist in weights Series
+            signal_weights = weights.loc[weights.index.intersection(active_signal_indices)]
+
+            if len(signal_weights) > 0:
+                # Normalize marker sizes
+                if signal_weights.max() > signal_weights.min():
+                    normalized_sizes = 15 + (
+                            (signal_weights - signal_weights.min()) /
+                            (signal_weights.max() - signal_weights.min())
+                    ) * 25
+                else:
+                    normalized_sizes = pd.Series(20, index=signal_weights.index)
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=signal_weights.index,
+                        y=df_current.loc[signal_weights.index, "PriceUSD"],
+                        mode="markers",
+                        name="Buy Signal",
+                        marker=dict(
+                            size=normalized_sizes.values,
+                            color="red",
+                            opacity=0.4,
+                            line=dict(width=1, color="darkred"),
+                        ),
+                        hovertemplate="<b>Buy Signal</b><br>Price: $%{y:,.2f}<br>Weight: %{customdata:.5f}<extra></extra>",
+                        customdata=signal_weights.values,
+                    ),
+                    row=1,
+                    col=1,
+                )
+
+    # ╔═══════════════════════════════════════════════════════════════╗
+    # ║ END OF FIXED SECTION                                          ║
+    # ╚═══════════════════════════════════════════════════════════════╝
+
+    # Weights plot only for the active window
     fig.add_trace(
         go.Bar(
             x=df_current.index,
@@ -200,7 +243,7 @@ def render_weight_distribution_chart(weights, df_current):
     with col4:
         st.metric("Std Dev", f"{weights.std():.6f}")
 
-    # This chart was incomplete in the original file, so I'm creating a simple bar chart.
+    # Weight distribution bar chart
     fig = go.Figure()
     fig.add_trace(
         go.Bar(

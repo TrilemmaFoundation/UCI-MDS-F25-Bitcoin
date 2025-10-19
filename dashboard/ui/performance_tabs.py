@@ -11,16 +11,17 @@ from dashboard.ui.charts import (
     render_strategy_comparison_chart,
 )
 from dashboard.model.strategy_new import construct_features
+from dashboard.analytics.portfolio_metrics import PortfolioAnalyzer, compare_strategies
 
 
 def render_performance(
-    df_window,
-    weights,
-    dynamic_perf,
-    uniform_perf,
-    current_day,
-    df_for_chart,
-    model_choice=None,
+        df_window,
+        weights,
+        dynamic_perf,
+        uniform_perf,
+        current_day,
+        df_for_chart,
+        model_choice=None,
 ):
     """
     Renders key metrics and the main tab layout for visualizations.
@@ -72,13 +73,15 @@ def render_performance(
             f"+{spd_advantage:.2f}% vs DCA",
         ],
     }
-    # Tabs
-    tab1, tab2, tab3, tab4 = st.tabs(
+
+    # Tabs - Added Risk Metrics as 5th tab
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(
         [
             "📈 Price & Signals",
             "⚖️ Weight Distribution",
             "📊 Strategy Comparison",
             "📅 Purchasing Schedule",
+            "🎯 Risk Metrics",
         ]
     )
 
@@ -94,8 +97,6 @@ def render_performance(
         )
     with tab2:
         render_weight_distribution_chart(weights, df_current)
-    # with tab3:
-    #     render_bayesian_learning_chart()
     with tab3:
         render_strategy_comparison_chart(dynamic_perf, uniform_perf)
         render_comparison_summary(
@@ -111,6 +112,9 @@ def render_performance(
         )
     with tab4:
         render_purchasing_calendar(df_current, dynamic_perf, weights, current_day)
+    with tab5:
+        render_risk_metrics_tab(dynamic_perf, uniform_perf)
+
     st.markdown("<h3>Performance Metrics</h3>", unsafe_allow_html=True)
 
     st.dataframe(pd.DataFrame(metrics_data), hide_index=True)
@@ -118,15 +122,15 @@ def render_performance(
 
 
 def render_comparison_summary(
-    dynamic_btc,
-    uniform_btc,
-    dynamic_perf,
-    uniform_perf,
-    dynamic_spd,
-    uniform_spd,
-    btc_advantage,
-    spd_advantage,
-    dynamic_pnl,
+        dynamic_btc,
+        uniform_btc,
+        dynamic_perf,
+        uniform_perf,
+        dynamic_spd,
+        uniform_spd,
+        btc_advantage,
+        spd_advantage,
+        dynamic_pnl,
 ):
     """Renders the summary tables and advantage metrics for the comparison tab."""
     col1, col2 = st.columns(2)
@@ -161,6 +165,138 @@ def render_comparison_summary(
         st.metric("P&L Advantage", f"${pnl_diff:+,.2f}")
 
 
+def render_risk_metrics_tab(dynamic_perf, uniform_perf):
+    """Render Risk Metrics Tab with advanced analytics"""
+    st.markdown("### 📊 Advanced Risk & Performance Metrics")
+
+    # Create analyzers
+    analyzer_dynamic = PortfolioAnalyzer(dynamic_perf)
+    analyzer_uniform = PortfolioAnalyzer(uniform_perf)
+
+    # Display key indicators
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        sharpe = analyzer_dynamic.sharpe_ratio()
+        st.metric(
+            "Sharpe Ratio",
+            f"{sharpe:.2f}",
+            help="Risk-adjusted returns (>1 is good, >2 is excellent)"
+        )
+
+    with col2:
+        sortino = analyzer_dynamic.sortino_ratio()
+        st.metric(
+            "Sortino Ratio",
+            f"{sortino:.2f}",
+            help="Downside risk-adjusted returns (higher is better)"
+        )
+
+    with col3:
+        max_dd, _, _ = analyzer_dynamic.max_drawdown()
+        st.metric(
+            "Max Drawdown",
+            f"{max_dd:.2f}%",
+            delta=f"{max_dd:.2f}%",
+            delta_color="inverse",
+            help="Largest peak-to-trough decline (lower is better)"
+        )
+
+    with col4:
+        win_rate = analyzer_dynamic.win_rate()
+        st.metric(
+            "Win Rate",
+            f"{win_rate:.1f}%",
+            help="Percentage of profitable days"
+        )
+
+    st.markdown("---")
+
+    # Comparison table
+    st.markdown("### 📋 Strategy Comparison Table")
+    comparison_df = compare_strategies(dynamic_perf, uniform_perf)
+
+    # Format display (excluding date columns)
+    formatted_df = comparison_df.copy()
+    for idx in formatted_df.index:
+        if 'Drawdown' in str(idx) and ('Start' in str(idx) or 'End' in str(idx)):
+            continue
+        else:
+            for col in formatted_df.columns:
+                val = formatted_df.loc[idx, col]
+                if isinstance(val, (int, float)):
+                    formatted_df.loc[idx, col] = f"{val:.2f}"
+
+    st.dataframe(formatted_df, use_container_width=True)
+
+    # Risk-Return Scatter Plot
+    st.markdown("### 📈 Risk-Return Profile")
+
+    import plotly.graph_objects as go
+
+    fig = go.Figure()
+
+    # Dynamic strategy
+    fig.add_trace(go.Scatter(
+        x=[analyzer_dynamic.volatility() * 100],
+        y=[dynamic_perf.iloc[-1]['PnL_Pct']],
+        mode='markers',
+        name='Dynamic Strategy',
+        marker=dict(size=20, color='#667eea'),
+        text=['Dynamic Strategy'],
+        hovertemplate='<b>%{text}</b><br>Risk: %{x:.2f}%<br>Return: %{y:.2f}%<extra></extra>'
+    ))
+
+    # Uniform strategy
+    fig.add_trace(go.Scatter(
+        x=[analyzer_uniform.volatility() * 100],
+        y=[uniform_perf.iloc[-1]['PnL_Pct']],
+        mode='markers',
+        name='Uniform DCA',
+        marker=dict(size=20, color='#f7931a'),
+        text=['Uniform DCA'],
+        hovertemplate='<b>%{text}</b><br>Risk: %{x:.2f}%<br>Return: %{y:.2f}%<extra></extra>'
+    ))
+
+    fig.update_layout(
+        title='Risk vs Return',
+        xaxis_title='Volatility (Risk) %',
+        yaxis_title='Total Return %',
+        height=400
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Explanation
+    with st.expander("ℹ️ Understanding Risk Metrics"):
+        st.markdown("""
+        **Sharpe Ratio**: Measures return per unit of risk. Higher is better.
+        - < 1: Poor risk-adjusted returns
+        - 1-2: Good performance  
+        - > 2: Excellent performance
+        
+        **Sortino Ratio**: Like Sharpe, but only penalizes downside volatility.
+        - Focuses on harmful volatility (losses)
+        - Higher values indicate better downside protection
+        
+        **Max Drawdown**: Largest peak-to-trough loss. Lower is better.
+        - Shows worst-case scenario
+        - Important for understanding potential losses
+        
+        **Win Rate**: % of days with positive returns.
+        - Higher win rate = more consistent gains
+        - Note: Can be misleading if wins are small and losses large
+        
+        **Calmar Ratio**: Annual return divided by max drawdown.
+        - Higher values indicate better risk-adjusted returns
+        - Useful for comparing strategies with different risk profiles
+        
+        **Volatility**: Standard deviation of returns (annualized).
+        - Higher = more price swings
+        - Lower = more stable returns
+        """)
+
+
 def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
     """
     Render a calendar-style view of the purchasing schedule showing past days and current day only.
@@ -181,7 +317,7 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
         return
 
     st.markdown("### 📅 Daily Purchasing Schedule")
-    st.markdown("*Invest $ Daily plan details and analysis*")
+    st.markdown("*Daily investment plan details and analysis*")
 
     # Calculate average weight for signal determination
     avg_weight = weights.mean() if len(weights) > 0 else 0
@@ -223,7 +359,7 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
 
             # Create calendar grid - we'll build it week by week
             total_cells = (
-                first_weekday + days_in_month
+                    first_weekday + days_in_month
             )  # Total cells needed (empty + days)
             num_weeks = (total_cells + 6) // 7  # Number of weeks to display
 
@@ -244,7 +380,7 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
                             # Check if this date has purchasing data
                             day_data = month_data[
                                 month_data["Date"].dt.date == current_date.date()
-                            ]
+                                ]
 
                             if not day_data.empty:
                                 # Get the latest data for this day (in case of duplicates)

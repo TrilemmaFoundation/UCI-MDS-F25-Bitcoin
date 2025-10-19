@@ -9,51 +9,63 @@ from dashboard.config import (
 )
 from datetime import date, timedelta
 
-private_key = GOOGLE_SHEETS_PRIVATE_KEY.replace("\\n", "\n")
+# 添加安全检查
+private_key = GOOGLE_SHEETS_PRIVATE_KEY.replace("\\n", "\n") if GOOGLE_SHEETS_PRIVATE_KEY else None
 private_key_id = GOOGLE_SHEETS_PRIVATE_KEY_ID
 client_id = GOOGLE_SHEETS_CLIENT_ID
-# Define the scope of the API access
-scope = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/drive",
-]
 
-cred = {
-    "type": "service_account",
-    "project_id": "cs-autotranslation",
-    "private_key_id": private_key_id,
-    "private_key": private_key,
-    "client_email": "523461412539-compute@developer.gserviceaccount.com",
-    "client_id": client_id,
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/523461412539-compute%40developer.gserviceaccount.com",
-    "universe_domain": "googleapis.com",
-}
-creds = ServiceAccountCredentials.from_json_keyfile_dict(cred, scope)
-client = gspread.authorize(creds)
+# 只有在配置完整时才初始化 Google Sheets
+GSHEET_ENABLED = all([private_key, private_key_id, client_id])
 
-sheet = client.open_by_url(
-    "https://docs.google.com/spreadsheets/d/1xOPm_uRawGakD0bc77i_1QoSxwi9Jf3hXz9_822iHP0/edit?gid=0#gid=0"
-)
-worksheet = sheet.get_worksheet(0)
+if GSHEET_ENABLED:
+    # Define the scope of the API access
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive",
+    ]
+
+    cred = {
+        "type": "service_account",
+        "project_id": "cs-autotranslation",
+        "private_key_id": private_key_id,
+        "private_key": private_key,
+        "client_email": "523461412539-compute@developer.gserviceaccount.com",
+        "client_id": client_id,
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/523461412539-compute%40developer.gserviceaccount.com",
+        "universe_domain": "googleapis.com",
+    }
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(cred, scope)
+    client = gspread.authorize(creds)
+
+    sheet = client.open_by_url(
+        "https://docs.google.com/spreadsheets/d/1xOPm_uRawGakD0bc77i_1QoSxwi9Jf3hXz9_822iHP0/edit?gid=0#gid=0"
+    )
+    worksheet = sheet.get_worksheet(0)
+else:
+    worksheet = None
 
 
 def first_blank_row():
     """
     Return the row index (1-based) of the first blank row (i.e. the next empty after the last non-empty one).
     """
+    if not GSHEET_ENABLED or worksheet is None:
+        return 1
+
     # Get all values in the sheet as a list of lists (rows)
     rows = worksheet.get_all_values()
-    # rows is a list of lists; each inner list is a row (possibly shorter if trailing blanks)
-    # The number of “used” rows is len(rows). So first blank row is len(rows) + 1.
     return len(rows) + 1
 
 
 def add_user_info_to_sheet(user_info: dict):
+    if not GSHEET_ENABLED or worksheet is None:
+        print("Google Sheets not configured, skipping user info save")
+        return None
 
     # validate input dict
     validation_fields = [
@@ -81,36 +93,27 @@ def add_user_info_to_sheet(user_info: dict):
     ]
 
     worksheet.insert_row(master_list, first_blank_row())
-
     print("row added successfully!")
-
-
-sample_in = {
-    "user_email": "smaueltown@gmail.com",
-    "budget": "1",
-    "start_date": "2025-10-16",
-    "investment_period": "12",
-    "boost_factor": "1.25",
-}
-# add_user_info_to_sheet(sample_in)
 
 
 def get_user_info_by_email(user_email: str):
     """
     Find a user by email and return all values from their row.
-
-    Args:
-        user_email: The email address to search for
-
-    Returns:
-        list: All cell values from the matching row, or None if not found
     """
+    if not GSHEET_ENABLED or worksheet is None:
+        print("Google Sheets not configured, returning default values")
+        return {
+            "user_email": user_email,
+            "budget": "1000",
+            "start_date": "2024-10-18",
+            "investment_period": "12",
+            "boost_factor": "1.25",
+        }
+
     try:
-        # Find the cell containing the email
         cell = worksheet.find(user_email)
 
         if cell:
-            # Get all values from that row
             row_values = worksheet.row_values(cell.row)
             to_return = {
                 "user_email": row_values[0],
@@ -129,28 +132,23 @@ def get_user_info_by_email(user_email: str):
         return None
 
 
-# Usage
-# user_info = get_user_info_by_email("smaueltown@gmail.com")
-# if user_info:
-#     print(user_info)
-
-
 def update_user_preferences(new_user_info: dict):
+    if not GSHEET_ENABLED or worksheet is None:
+        print("Google Sheets not configured, skipping preference update")
+        return
+
     try:
-        # Find the cell containing the email
         cell = worksheet.find(new_user_info["user_email"])
 
         if cell:
             row_num = cell.row
             print(f"Found user at row {row_num}")
 
-            # Get headers to map column positions
             headers = worksheet.row_values(1)
 
-            # Update each field in new_user_info
             for field, value in new_user_info.items():
                 if field in headers:
-                    col_num = headers.index(field) + 1  # +1 for 1-based indexing
+                    col_num = headers.index(field) + 1
                     worksheet.update_cell(row_num, col_num, value)
 
             print(f"Updated user: {new_user_info['user_email']}")
@@ -161,29 +159,15 @@ def update_user_preferences(new_user_info: dict):
         print("error:", e)
 
 
-# Example usage
-sample_in = {
-    "user_email": "smaueltown@gmail.com",
-    "budget": 5000,
-    "start_date": "2025-01-01",
-    "investment_period": 12,
-    "boost_factor": 1.5,
-}
-
-# update_user_preferences(sample_in)
-
-
 def does_user_exist(user_email: str):
-    try:
-        # Find the cell containing the email
-        cell = worksheet.find(user_email)
+    if not GSHEET_ENABLED or worksheet is None:
+        return False
 
+    try:
+        cell = worksheet.find(user_email)
         if cell:
             return True
         else:
             return False
     except Exception as e:
         return False
-
-
-# print(does_user_exist("smaueltown@gmail.com"))
