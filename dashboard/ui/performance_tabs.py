@@ -120,46 +120,6 @@ def render_comparison_summary(metrics: dict, dynamic_perf, uniform_perf):
         )
 
 
-def render_purchasing_calendar(dynamic_perf, weights):
-    """Renders a simplified, list-style calendar of the purchasing schedule."""
-    st.markdown("### 📅 Daily Purchasing Log")
-
-    if dynamic_perf.empty:
-        st.info("The accumulation period has not yet started.")
-        return
-
-    avg_weight = weights.mean() if not weights.empty else 0
-
-    # Group data by month for a cleaner layout
-    calendar_data = dynamic_perf.copy()
-    calendar_data["YearMonth"] = calendar_data["Date"].dt.to_period("M")
-
-    for period in sorted(calendar_data["YearMonth"].unique(), reverse=True):
-        month_data = calendar_data[calendar_data["YearMonth"] == period]
-        month_name = period.strftime("%B %Y")
-
-        with st.expander(
-            f"**{month_name}**",
-            expanded=(period == calendar_data["YearMonth"].iloc[-1]),
-        ):
-            for _, day_info in month_data.iterrows():
-                style = _get_signal_style(day_info["Weight"], avg_weight)
-                cols = st.columns([1, 2, 2, 2, 3])
-
-                cols[0].markdown(f"**{day_info['Date'].day}**")
-                cols[1].markdown(f"**${day_info['Amount_Spent']:,.2f}**")
-                cols[2].markdown(f"₿ {day_info['BTC_Bought']:.7f}")
-                cols[3].markdown(f"@{day_info['Price']:,.2f}")
-                cols[4].markdown(
-                    f"<span style='color:{style['color']};'>{style['emoji']} {style['text']}</span>",
-                    unsafe_allow_html=True,
-                )
-            st.markdown("</div>", unsafe_allow_html=True)
-
-
-from dashboard.analytics.portfolio_metrics import PortfolioAnalyzer, compare_strategies
-
-
 def render_performance(
     df_window,
     weights,
@@ -173,8 +133,8 @@ def render_performance(
     Renders key metrics and the main tab layout for visualizations.
     Accepts an additional df_for_chart for historical context.
     """
+    metrics = _calculate_metrics(df_window, dynamic_perf, uniform_perf, current_day)
 
-    # Display model information
     if model_choice:
         if model_choice == "GT-MSA-S25-Trilemma Model":
             st.success(
@@ -220,7 +180,6 @@ def render_performance(
         ],
     }
 
-    # Tabs - Added Risk Metrics as 5th tab
     tab1, tab2, tab3, tab4, tab5 = st.tabs(
         [
             "📈 Price & Signals",
@@ -256,68 +215,22 @@ def render_performance(
 
     with tab4:
         render_purchasing_calendar(df_current, dynamic_perf, weights, current_day)
+
     with tab5:
         render_risk_metrics_tab(dynamic_perf, uniform_perf)
 
     st.markdown("<h3>Performance Metrics</h3>", unsafe_allow_html=True)
-
     st.dataframe(pd.DataFrame(metrics_data), hide_index=True)
     st.markdown("---")
-
-
-def render_comparison_summary(
-    dynamic_btc,
-    uniform_btc,
-    dynamic_perf,
-    uniform_perf,
-    dynamic_spd,
-    uniform_spd,
-    btc_advantage,
-    spd_advantage,
-    dynamic_pnl,
-):
-    """Renders the summary tables and advantage metrics for the comparison tab."""
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("#### Dynamic Strategy")
-        st.markdown(
-            f"- **Total BTC:** {dynamic_btc:.8f} ₿\n- **Avg Entry:** ${dynamic_perf.iloc[-1]['Avg_Entry_Price']:,.2f}\n- **Total SPD:** {dynamic_spd:,.0f}\n- **P&L:** ${dynamic_perf.iloc[-1]['PnL']:,.2f} ({dynamic_perf.iloc[-1]['PnL_Pct']:+.2f}%)"
-        )
-    with col2:
-        st.markdown("#### Uniform DCA")
-        st.markdown(
-            f"- **Total BTC:** {uniform_btc:.8f} ₿\n- **Avg Entry:** ${uniform_perf.iloc[-1]['Avg_Entry_Price']:,.2f}\n- **Total SPD:** {uniform_spd:,.0f}\n- **P&L:** ${uniform_perf.iloc[-1]['PnL']:,.2f} ({uniform_perf.iloc[-1]['PnL_Pct']:+.2f}%)"
-        )
-
-    st.markdown("---")
-    st.markdown("### 🎯 Strategy Advantage")
-    adv_col1, adv_col2, adv_col3 = st.columns(3)
-    with adv_col1:
-        st.metric(
-            "Additional BTC",
-            f"{dynamic_btc - uniform_btc:+.8f} ₿",
-            f"{btc_advantage:+.2f}%",
-        )
-    with adv_col2:
-        st.metric(
-            "SPD Advantage",
-            f"{dynamic_spd - uniform_spd:+,.0f}",
-            f"{spd_advantage:+.2f}%",
-        )
-    with adv_col3:
-        pnl_diff = dynamic_pnl - uniform_perf.iloc[-1]["PnL"]
-        st.metric("P&L Advantage", f"${pnl_diff:+,.2f}")
 
 
 def render_risk_metrics_tab(dynamic_perf, uniform_perf):
     """Render Risk Metrics Tab with advanced analytics"""
     st.markdown("### 📊 Advanced Risk & Performance Metrics")
 
-    # Create analyzers
     analyzer_dynamic = PortfolioAnalyzer(dynamic_perf)
     analyzer_uniform = PortfolioAnalyzer(uniform_perf)
 
-    # Display key indicators
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
@@ -352,31 +265,22 @@ def render_risk_metrics_tab(dynamic_perf, uniform_perf):
 
     st.markdown("---")
 
-    # Comparison table
     st.markdown("### 📋 Strategy Comparison Table")
     comparison_df = compare_strategies(dynamic_perf, uniform_perf)
 
-    # Format display (excluding date columns)
-    formatted_df = comparison_df.copy()
-    for idx in formatted_df.index:
-        if "Drawdown" in str(idx) and ("Start" in str(idx) or "End" in str(idx)):
-            continue
-        else:
-            for col in formatted_df.columns:
-                val = formatted_df.loc[idx, col]
-                if isinstance(val, (int, float)):
-                    formatted_df.loc[idx, col] = f"{val:.2f}"
+    # FIX: Use Streamlit's format parameter to prevent the FutureWarning
+    # This applies the specified format to all numeric columns for display
+    # purposes without changing the underlying data types.
+    st.dataframe(
+        comparison_df.style.format("{:.2f}", na_rep=""),
+    )
 
-    st.dataframe(formatted_df, use_container_width=True)
-
-    # Risk-Return Scatter Plot
     st.markdown("### 📈 Risk-Return Profile")
 
     import plotly.graph_objects as go
 
     fig = go.Figure()
 
-    # Dynamic strategy
     fig.add_trace(
         go.Scatter(
             x=[analyzer_dynamic.volatility() * 100],
@@ -389,7 +293,6 @@ def render_risk_metrics_tab(dynamic_perf, uniform_perf):
         )
     )
 
-    # Uniform strategy
     fig.add_trace(
         go.Scatter(
             x=[analyzer_uniform.volatility() * 100],
@@ -409,33 +312,32 @@ def render_risk_metrics_tab(dynamic_perf, uniform_perf):
         height=400,
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, config={"displayModeBar": True})
 
-    # Explanation
     with st.expander("ℹ️ Understanding Risk Metrics"):
         st.markdown(
             """
         **Sharpe Ratio**: Measures return per unit of risk. Higher is better.
         - < 1: Poor risk-adjusted returns
-        - 1-2: Good performance  
+        - 1-2: Good performance
         - > 2: Excellent performance
-        
+
         **Sortino Ratio**: Like Sharpe, but only penalizes downside volatility.
         - Focuses on harmful volatility (losses)
         - Higher values indicate better downside protection
-        
+
         **Max Drawdown**: Largest peak-to-trough loss. Lower is better.
         - Shows worst-case scenario
         - Important for understanding potential losses
-        
+
         **Win Rate**: % of days with positive returns.
         - Higher win rate = more consistent gains
         - Note: Can be misleading if wins are small and losses large
-        
+
         **Calmar Ratio**: Annual return divided by max drawdown.
         - Higher values indicate better risk-adjusted returns
         - Useful for comparing strategies with different risk profiles
-        
+
         **Volatility**: Standard deviation of returns (annualized).
         - Higher = more price swings
         - Lower = more stable returns
@@ -448,14 +350,12 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
     Render a calendar-style view of the purchasing schedule showing past days and current day only.
     Shows BTC price, buy indicators, and amount purchased for each day.
     """
-    # Only show past days and current day (no future days)
     current_data = dynamic_perf.iloc[: current_day + 1].copy()
 
     if current_data.empty:
         st.info("No purchasing data available for the selected time period.")
         return
 
-    # Get features for price analysis
     try:
         features = construct_features(df_current)
     except Exception as e:
@@ -465,49 +365,37 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
     st.markdown("### 📅 Daily Purchasing Schedule")
     st.markdown("*Daily investment plan details and analysis*")
 
-    # Calculate average weight for signal determination
     avg_weight = weights.mean() if len(weights) > 0 else 0
 
-    # Get the date range for the calendar
     start_date = current_data.iloc[0]["Date"]
     end_date = current_data.iloc[-1]["Date"]
 
-    # Create calendar view
     calendar_container = st.container()
 
     with calendar_container:
-        # Group data by month and year for better organization
         current_data["YearMonth"] = current_data["Date"].dt.to_period("M")
 
         for period in sorted(current_data["YearMonth"].unique()):
             month_data = current_data[current_data["YearMonth"] == period]
             month_start = month_data.iloc[0]["Date"]
 
-            # Display month header
             st.markdown(f"### {month_start.strftime('%B %Y')}")
 
-            # Create calendar grid for the month
             month_year = period.to_timestamp()
             first_day = month_year.replace(day=1)
 
-            # Get the number of days in the month and the starting weekday
             days_in_month = cal_module.monthrange(first_day.year, first_day.month)[1]
-            first_weekday = first_day.weekday()  # Monday = 0, Sunday = 6
+            first_weekday = first_day.weekday()
 
-            # Create month view with day cells
             day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-            # Day headers
             header_cols = st.columns(7)
             for i, day_name in enumerate(day_names):
                 with header_cols[i]:
                     st.markdown(f"**{day_name}**")
 
-            # Create calendar grid - we'll build it week by week
-            total_cells = (
-                first_weekday + days_in_month
-            )  # Total cells needed (empty + days)
-            num_weeks = (total_cells + 6) // 7  # Number of weeks to display
+            total_cells = first_weekday + days_in_month
+            num_weeks = (total_cells + 6) // 7
 
             for week in range(num_weeks):
                 cols = st.columns(7)
@@ -516,53 +404,27 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
 
                     with cols[day_of_week]:
                         if cell_num < first_weekday:
-                            # Empty cell before month starts
                             st.markdown("")
                         elif cell_num < first_weekday + days_in_month:
-                            # Day within the month
                             day_num = cell_num - first_weekday + 1
                             current_date = first_day.replace(day=day_num)
 
-                            # Check if this date has purchasing data
                             day_data = month_data[
                                 month_data["Date"].dt.date == current_date.date()
                             ]
 
                             if not day_data.empty:
-                                # Get the latest data for this day (in case of duplicates)
                                 day_info = day_data.iloc[-1]
 
-                                # Get price analysis
                                 price = day_info["Price"]
                                 amount_spent = day_info["Amount_Spent"]
                                 weight = day_info["Weight"]
 
-                                # Determine buy signal color and indicator
-                                signal_color = "gray"
-                                signal_emoji = "⚪"
-                                signal_text = "Normal"
+                                signal_style = _get_signal_style(weight, avg_weight)
 
-                                if weight > avg_weight * 2:
-                                    signal_color = "green"
-                                    signal_emoji = "🟢"
-                                    signal_text = "Strong Buy"
-                                elif weight > avg_weight * 1.5:
-                                    signal_color = "#FFA500"  # Orange
-                                    signal_emoji = "🟠"
-                                    signal_text = "Moderate Buy"
-                                elif weight > avg_weight:
-                                    signal_color = "#FFD700"  # Light orange/yellow
-                                    signal_emoji = "🟡"
-                                    signal_text = "Light Buy"
-                                else:
-                                    signal_color = "red"
-                                    signal_emoji = "🔴"
-                                    signal_text = "Reduced"
-
-                                # Create day cell with styling
                                 day_style = f"""
                                 <div style="
-                                    border: 2px solid {signal_color};
+                                    border: 2px solid {signal_style['color']};
                                     border-radius: 8px;
                                     padding: 8px;
                                     margin: 2px;
@@ -573,8 +435,8 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
                                     <div style="font-weight: bold; font-size: 14px;">
                                         {day_num}
                                     </div>
-                                    <div style="font-size: 10px; color: {signal_color}; margin: 2px 0;">
-                                        {signal_emoji} {signal_text}
+                                    <div style="font-size: 10px; color: {signal_style['color']}; margin: 2px 0;">
+                                        {signal_style['emoji']} {signal_style['text']}
                                     </div>
                                     <div style="font-size: 9px; margin: 2px 0;">
                                         <strong>${price:,.0f}</strong>
@@ -586,9 +448,7 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
                                 """
                                 st.markdown(day_style, unsafe_allow_html=True)
                             else:
-                                # No data for this day - only show if it's past or current day
                                 if current_date.date() <= datetime.now().date():
-                                    # Past day with no data (weekend or holiday)
                                     st.markdown(
                                         f"""
                                     <div style="
@@ -611,15 +471,12 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
                                         unsafe_allow_html=True,
                                     )
                                 else:
-                                    # Future day - don't show
                                     st.markdown("")
                         else:
-                            # Empty cell after month ends
                             st.markdown("")
 
-            st.markdown("---")  # Separator between months
+            st.markdown("---")
 
-        # Add legend
         st.markdown("#### Legend")
         legend_cols = st.columns(5)
         with legend_cols[0]:
