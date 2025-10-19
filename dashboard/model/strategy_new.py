@@ -77,6 +77,10 @@ def compute_weights(df_window: pd.DataFrame, boost_alpha: float = 1.25) -> pd.Se
     """
     # 1. Build feature DataFrame and index info
     features = construct_features(df_window)
+
+    # Keep only rows where we have valid data (no NaNs in critical columns)
+    features = features.dropna(subset=["PriceUSD"])
+
     dates = features.index
     total_days = len(features)
 
@@ -143,7 +147,8 @@ def compute_weights(df_window: pd.DataFrame, boost_alpha: float = 1.25) -> pd.Se
         # else: skip this boost to maintain weight constraints
 
     # 7. Assign back into pandas Series and return
-    weights.loc[dates] = temp_weights
+    # FIX: Use iloc instead of loc to ensure proper alignment
+    weights.iloc[:] = temp_weights
 
     # Validation: Ensure weights sum to approximately 1.0
     weight_sum = weights.sum()
