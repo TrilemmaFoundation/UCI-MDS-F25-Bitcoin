@@ -3,9 +3,6 @@ import streamlit as st
 import pandas as pd
 import sys
 
-# It's generally better to run streamlit from the project root directory
-# (e.g., `streamlit run Dashboard.py`) to avoid path modifications.
-# If your project structure requires this, it can be kept.
 sys.path.append(".")
 
 # --- Local Imports ---
