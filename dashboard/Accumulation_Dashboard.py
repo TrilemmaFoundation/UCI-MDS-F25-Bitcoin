@@ -3,61 +3,127 @@ import streamlit as st
 import pandas as pd
 import sys
 
-print()
+# It's generally better to run streamlit from the project root directory
+# (e.g., `streamlit run Dashboard.py`) to avoid path modifications.
+# If your project structure requires this, it can be kept.
+sys.path.append(".")
 
 # --- Local Imports ---
-sys.path.append(".")
-from dashboard.model.strategy_new import compute_weights
-from dashboard.model.strategy_gt import compute_weights as compute_weights_gt
-from dashboard.sidebar import render_sidebar
-
 import dashboard.config as config
 from dashboard.data_loader import load_bitcoin_data
+from dashboard.model.strategy_new import compute_weights
+from dashboard.model.strategy_gt import (
+    compute_weights as compute_weights_gt,
+)  # Example for alternate model
+from dashboard.sidebar import render_sidebar
 from dashboard.simulation import (
-    update_bayesian_belief,
     simulate_accumulation,
     calculate_uniform_dca_performance,
+    update_bayesian_belief,
 )
 from dashboard.ui.header import render_header
 from dashboard.ui.controls import render_controls
-from dashboard.ui.validation import render_validation
 from dashboard.ui.performance_tabs import render_performance
 from dashboard.ui.recommendations import render_recommendations
 
 
+def initialize_session_state():
+    """Initialize all necessary session state variables if they don't exist."""
+    defaults = {
+        "current_day": 0,
+        "prior_mean": 0.0,
+        "prior_var": 1.0,
+        "bayesian_history": [],
+        "last_start_date": None,
+        "last_investment_window": None,
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+
+def handle_bayesian_update(df_window: pd.DataFrame, current_day: int):
+    """
+    Performs a Bayesian belief update based on recent price returns.
+    Updates are stored in st.session_state to persist across reruns.
+    """
+    # Start learning only after a week of data is available
+    if current_day < 7:
+        return
+
+    # Check if we've already processed an update for this day
+    if (
+        st.session_state.bayesian_history
+        and st.session_state.bayesian_history[-1]["day"] == current_day
+    ):
+        return
+
+    # Use the last 7 days of historical (non-forecast) data for the update
+    learning_slice = df_window.iloc[max(0, current_day - 6) : current_day + 1]
+    learning_slice = learning_slice[learning_slice["Type"] == "Historical"]
+
+    if len(learning_slice) > 1:
+        returns = learning_slice["PriceUSD"].pct_change()
+        recent_return_mean = returns.mean()
+        obs_var = returns.var()
+
+        # Update only if the observation variance is valid
+        if pd.notna(obs_var) and obs_var > 0:
+            new_mean, new_var = update_bayesian_belief(
+                st.session_state.prior_mean,
+                st.session_state.prior_var,
+                recent_return_mean,
+                obs_var,
+            )
+
+            # Store history and update the prior for the next iteration
+            st.session_state.bayesian_history.append(
+                {
+                    "day": current_day,
+                    "mean": new_mean,
+                    "var": new_var,
+                    "confidence": 1 / new_var,
+                }
+            )
+            st.session_state.prior_mean, st.session_state.prior_var = new_mean, new_var
+
+
 def main():
+    """Main function to run the Streamlit dashboard application."""
     st.set_page_config(
-        page_title="BTC Accumulation Dashboard",
+        page_title="BTC Dynamic Accumulation Dashboard",
         layout="wide",
         page_icon="₿",
         initial_sidebar_state="expanded",
     )
 
-    # --- Sidebar and Parameters ---
+    # --- 1. Initialization and Sidebar ---
+    initialize_session_state()
     params = render_sidebar()
 
-    # --- Data Loading ---
+    # --- 2. Data Loading ---
     with st.spinner("📥 Loading Bitcoin price data and generating forecast..."):
         df_btc = load_bitcoin_data()
     if df_btc is None or df_btc.empty:
-        st.error("❌ Unable to load Bitcoin data. Please check and try again.")
+        st.error(
+            "❌ Unable to load Bitcoin data. The API may be down. Please try again later."
+        )
         st.stop()
 
-    # --- UI Rendering: Header and Controls ---
-    render_header(df_btc[df_btc["Type"] == "Historical"], config.today_formatted)
+    # --- 3. UI: Header and Controls ---
+    render_header(df_btc[df_btc["Type"] == "Historical"], config.TODAY)
     start_date, current_day, df_window = render_controls(
         df_btc, params["investment_window"]
     )
 
-    # --- Core Logic: Strategy Calculation ---
-    model_choice = params.get("model_choice", "Current Model")
-    
-    with st.spinner(f"🧮 Computing dynamic weights using {model_choice}..."):
-        if model_choice == "GT-MSA-S25-Trilemma Model":
+    # --- 4. Core Computations ---
+    with st.spinner(f"🧮 Computing weights using {params['model_choice']}..."):
+        if params["model_choice"] == "GT-MSA-S25-Trilemma Model":
             weights = compute_weights_gt(df_window)
         else:
             weights = compute_weights(df_window, boost_alpha=params["boost_alpha"])
 
+    # Run simulations based on computed weights up to the selected day
     dynamic_perf = simulate_accumulation(
         df_window, weights, params["budget"], current_day
     )
@@ -65,86 +131,39 @@ def main():
         df_window, params["budget"], current_day
     )
 
-    # --- UI Rendering: Validation and Performance ---
-    # render_validation(weights, dynamic_perf, params["budget"], current_day)
+    # Perform Bayesian learning update
+    handle_bayesian_update(df_window, current_day)
 
-    # --- Bayesian Update Logic ---
-    if current_day >= 7:
-        df_for_learning = df_window.iloc[max(0, current_day - 6) : current_day + 1]
-        df_for_learning = df_for_learning[df_for_learning["Type"] == "Historical"]
+    # --- 5. UI Rendering ---
 
-        if len(df_for_learning) > 1:
-            recent_return = df_for_learning["PriceUSD"].pct_change().mean()
-            obs_var = df_for_learning["PriceUSD"].pct_change().var()
-
-            if obs_var > 0:
-                # Ensure prior parameters exist in session state
-                if "prior_mean" not in st.session_state:
-                    st.session_state.prior_mean = 0.0
-                if "prior_var" not in st.session_state:
-                    st.session_state.prior_var = 1.0
-                    
-                new_mean, new_var = update_bayesian_belief(
-                    st.session_state.prior_mean,
-                    st.session_state.prior_var,
-                    recent_return,
-                    obs_var,
-                )
-                # Ensure bayesian_history exists and is initialized
-                if "bayesian_history" not in st.session_state:
-                    st.session_state.bayesian_history = []
-                    
-                if (
-                    not st.session_state.bayesian_history
-                    or st.session_state.bayesian_history[-1]["day"] != current_day
-                ):
-                    st.session_state.bayesian_history.append(
-                        {
-                            "day": current_day,
-                            "mean": new_mean,
-                            "var": new_var,
-                            "confidence": 1 / new_var,
-                        }
-                    )
-                    st.session_state.prior_mean, st.session_state.prior_var = (
-                        new_mean,
-                        new_var,
-                    )
-
-    # --- Prepare data for charts and pass to rendering functions ---
-    df_current = df_window.iloc[: current_day + 1]
-
-    # NEW: Create the extended DataFrame for chart display
-    window_start_date = df_window.index[0]
-    historical_context_start_date = window_start_date - pd.DateOffset(years=1)
-    current_view_end_date = df_current.index[-1]
-
-    # Ensure the start date is not before the beginning of all available data
-    chart_display_start = max(historical_context_start_date, df_btc.index[0])
-    df_for_chart = df_btc.loc[chart_display_start:current_view_end_date].copy()
-
+    # Render the "Action Plan" for the current day
     render_recommendations(
-        dynamic_perf,
-        df_current,
-        weights,
-        params["budget"],
-        current_day,
-        start_date + pd.DateOffset(days=current_day),
+        dynamic_perf=dynamic_perf,
+        df_current=df_window,  # Pass the full window; function will slice internally
+        weights=weights,
+        budget=params["budget"],
+        current_day=current_day,
     )
 
+    # Prepare a single, consistent DataFrame for charting that includes historical context
+    chart_start_date = df_window.index.min() - pd.DateOffset(years=1)
+    chart_end_date = df_window.index.max()
+    df_chart_display = df_btc.loc[chart_start_date:chart_end_date].copy()
+
+    # Render all performance tabs (Portfolio, Charts, etc.)
     render_performance(
         df_window=df_window,
         weights=weights,
         dynamic_perf=dynamic_perf,
         uniform_perf=uniform_perf,
         current_day=current_day,
-        df_for_chart=df_for_chart,  # Pass the new extended DataFrame
-        model_choice=model_choice,  # Pass model choice
+        df_for_chart=df_chart_display,
+        model_choice=params["model_choice"],
     )
 
     st.info(
-        f"**Note:** Price data after **{config.HISTORICAL_END}** is a simulation "
-        "for forward-looking analysis and is not a financial prediction."
+        f"**Disclaimer:** Price data after **{config.TODAY.strftime('%Y-%m-%d')}** is a programmatic simulation "
+        "for analytical purposes and does not constitute a financial forecast or investment advice."
     )
 
 
