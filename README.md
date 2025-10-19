@@ -49,7 +49,7 @@ Here are some short bios for each team member.
 **Favorite Hobby or Fun Fact:** I love singing and popping street dance! Music and movement are my way of expressing creativity beyond data science.  
 **LinkedIn:** https://www.linkedin.com/in/qunli-liu-244a5822b
 
-### ![Yicheng Wen`]() ###
+### ![Yicheng Wen`](https://github.com/TrilemmaFoundation/UCI-MDS-F25-Bitcoin/blob/yicheng/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20251018172646_251_38.jpg) ###
 **Name:** Yicheng Wen \
 **Undergrad:** The Chinese University of Hong Kong, Shenzhen\
 **From:** China  \
