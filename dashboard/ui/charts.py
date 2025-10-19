@@ -3,19 +3,23 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from dashboard.model.strategy_new import construct_features  # Assumes this file exists
+from dashboard.model.strategy_new import construct_features
 import dashboard.config as config
+from datetime import datetime
+from dashboard.config import TODAY
 
 
-def render_price_signals_chart(df_chart_display, df_current, weights, df_window):
+def render_price_signals_chart(df_chart_display, weights, df_window, current_day):
     """
     Renders the Price & Signals chart.
-    - df_chart_display: The extended DataFrame for plotting context lines (Price, MA200).
-    - df_current: The DataFrame for the active window to plot signals and weights.
+    - current_day: The current day index (0-based) to slice data up to.
     """
     st.markdown("<h3>Bitcoin Price with Buy Signals</h3>", unsafe_allow_html=True)
 
-    # Calculate features (MA200) on the entire display range for a continuous line
+    # Slice the window data up to the current day (inclusive, using 0-based index)
+    df_current_slice = df_window.iloc[: current_day + 1]
+
+    # Calculate features on the entire display range for continuous MA200 line
     features = construct_features(df_chart_display)
 
     fig = make_subplots(
@@ -27,7 +31,7 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
         subplot_titles=("Price & MA200", "Daily Weights"),
     )
 
-    # Plotting Price and MA200 lines using the full df_chart_display (Unchanged)
+    # --- Plot main price and MA200 lines ---
     hist_data = df_chart_display[df_chart_display["Type"] == "Historical"]
     forecast_data = df_chart_display[df_chart_display["Type"] == "Forecast"]
 
@@ -41,6 +45,7 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
         row=1,
         col=1,
     )
+
     if not forecast_data.empty:
         fig.add_trace(
             go.Scatter(
@@ -52,9 +57,10 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
             row=1,
             col=1,
         )
+
     fig.add_trace(
         go.Scatter(
-            x=df_chart_display.index,
+            x=features.index,
             y=features["ma200"],
             name="MA200",
             line=dict(color="#667eea", width=2, dash="dash"),
@@ -62,104 +68,90 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
         row=1,
         col=1,
     )
+
     fig.add_vline(
-        x=pd.to_datetime(config.HISTORICAL_END).timestamp() * 1000,
+        x=TODAY,
         line_width=2,
         line_dash="dot",
         line_color="grey",
-        annotation_text="Today",
-        annotation_position="top left",
     )
 
+    fig.add_annotation(
+        x=TODAY,
+        y=0.95,  # 1 = top of plotting area when yref='paper'
+        xref="x",
+        yref="paper",
+        text=f"Today ({TODAY.date()})",
+        showarrow=False,
+        xanchor="left",  # similar to "top left" placement
+        yanchor="bottom",
+        bgcolor="rgba(255,255,255,0.05)",  # optional styling
+        bordercolor="rgba(0,0,0,0.0)",
+        font=dict(size=11),
+    )
+
+    # --- Add Reference V-Lines ---
+
     fig.add_vline(
-        x=pd.to_datetime(df_current.index[0]).timestamp() * 1000,
+        x=df_window.index[0],
         line_width=2,
         line_dash="dot",
         line_color="grey",
-        annotation_text="Accumulation Start Date",
-        annotation_position="top left",
     )
 
-    # ╔══════════════════════════════════════════════════════════════════╗
-    # ║ START OF UPDATED SECTION: PLOTTING HISTORICAL & ACTIVE SIGNALS   ║
-    # ╚══════════════════════════════════════════════════════════════════╝
-
-    # --- 1. Plot Historical Context Signals (fixed size) ---
-    # Isolate the part of the chart that comes BEFORE the user's selected window
-    window_start_date = df_window.index[0]
-    historical_context_df = df_chart_display.loc[
-        df_chart_display.index < window_start_date
-    ]
-
-    # Find where the buy condition was met in that historical period
-    historical_signals = (
-        historical_context_df["PriceUSD"]
-        < features.loc[historical_context_df.index, "ma200"]
+    fig.add_annotation(
+        x=df_window.index[0],
+        y=0.95,  # 1 = top of plotting area when yref='paper'
+        xref="x",
+        yref="paper",
+        text=f"Accumulation Start",
+        showarrow=False,
+        xanchor="left",  # similar to "top left" placement
+        yanchor="bottom",
+        bgcolor="rgba(255,255,255,0.05)",  # optional styling
+        bordercolor="rgba(0,0,0,0.0)",
+        font=dict(size=11),
     )
 
-    # Add a trace for these historical signals with a distinct, fixed-size marker
-    fig.add_trace(
-        go.Scatter(
-            x=historical_context_df.index[historical_signals],
-            y=historical_context_df.loc[historical_signals, "PriceUSD"],
-            mode="markers",
-            name="Historical Buy Condition",  # New legend name
-            marker=dict(
-                size=6,  # Fixed small size
-                color="#1CBDE6",  # Different color for distinction
-                symbol="diamond",  # Different symbol for clarity
-                opacity=0.8,
-            ),
-            hovertemplate="<b>Signal Condition Met</b><br>Price: $%{y:,.2f}<extra></extra>",
-        ),
-        row=1,
-        col=1,
-    )
+    # --- Plot Buy Signals ---
+    # Find all potential buy signals in the active window slice
+    features_slice = features.loc[df_current_slice.index]
+    buy_condition = features_slice["PriceUSD"] < features_slice["ma200"]
 
-    # --- 2. Plot Active Window Signals (variable size) ---
-    # This shows the actual buys executed by the simulation in the selected window.
-    active_signals = df_current["PriceUSD"] < features.loc[df_current.index, "ma200"]
+    if buy_condition.any():
+        signal_dates = features_slice.index[buy_condition]
+        signal_prices = features_slice.loc[buy_condition, "PriceUSD"]
+        signal_weights = weights.loc[signal_dates]
 
-    # We need to handle the case where there are no active signals yet to avoid errors
-    if active_signals.any():
+        # Use weights to determine marker size for visual emphasis
+        min_w, max_w = weights.min(), weights.max()
+        normalized_size = 15 + ((signal_weights - min_w) / (max_w - min_w + 1e-9)) * 25
+
         fig.add_trace(
             go.Scatter(
-                x=df_current.index[active_signals],
-                y=df_current.loc[active_signals, "PriceUSD"],
+                x=signal_dates,
+                y=signal_prices,
                 mode="markers",
                 name="Buy Signal",
                 marker=dict(
-                    size=15
-                    + (
-                        weights.loc[df_current.index][active_signals]
-                        - weights.loc[df_current.index][active_signals].min()
-                    )
-                    / (
-                        weights.loc[df_current.index][active_signals].max()
-                        - weights.loc[df_current.index][active_signals].min()
-                        + 1e-10
-                    )
-                    * 25,  # Normalized to 15-40 range
+                    size=normalized_size,
                     color="red",
                     opacity=0.4,
                     line=dict(width=1, color="darkred"),
                 ),
                 hovertemplate="<b>Buy Signal</b><br>Price: $%{y:,.2f}<br>Weight: %{customdata:.5f}<extra></extra>",
-                customdata=weights.loc[df_current.index][active_signals],
+                customdata=signal_weights,
             ),
             row=1,
             col=1,
         )
 
-    # ╔══════════════════════════════════════════════════════════════════╗
-    # ║ END OF UPDATED SECTION                                           ║
-    # ╚══════════════════════════════════════════════════════════════════╝
-
-    # Weights plot only for the active window (Unchanged)
+    # --- Plot Weights Bar Chart ---
+    weights_slice = weights.loc[df_current_slice.index]
     fig.add_trace(
         go.Bar(
-            x=df_current.index,
-            y=weights.loc[df_current.index],
+            x=weights_slice.index,
+            y=weights_slice,
             name="Daily Weight",
             marker_color="#667eea",
             hovertemplate="Weight: %{y:.6f}<extra></extra>",
@@ -168,6 +160,7 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
         col=1,
     )
 
+    # Add reference line for uniform DCA
     fig.add_hline(
         y=1 / len(df_window),
         line_dash="dash",
@@ -187,6 +180,8 @@ def render_price_signals_chart(df_chart_display, df_current, weights, df_window)
     st.plotly_chart(fig, use_container_width=True)
 
 
+# The other chart functions are okay and are omitted for brevity.
+# ... (render_weight_distribution_chart, etc. remain here) ...
 def render_weight_distribution_chart(weights, df_current):
     """Renders the Weight Distribution content for Tab 2."""
     st.markdown("### Daily Weight Distribution")
