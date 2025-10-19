@@ -93,36 +93,40 @@ def render_controls(df_btc, investment_window):
     st.session_state.current_day = min(
         st.session_state.get("current_day", 0), max_day_index
     )
+    # print(st.session_state.current_day)
 
     # Main slider
-    current_day = st.slider(
-        "Current Day in Period",
-        min_value=0,
-        max_value=max_day_index,
-        value=st.session_state.current_day,
-        help="Slide to simulate progression through the accumulation period (Day 0 is the start).",
-    )
-    st.session_state.current_day = current_day
+
+    current_day = st.session_state.current_day
 
     # Buttons
     cols = st.columns(6 if today_is_in_window else 5)
-    if cols[0].button("⏮️ First", use_container_width=True):
+    if cols[0].button("⏮️ First", width="stretch"):
         st.session_state.current_day = 0
         st.rerun()
-    if cols[1].button("◀️ Prev", use_container_width=True):
+    if cols[1].button("◀️ Prev", width="stretch"):
         st.session_state.current_day = max(0, st.session_state.current_day - 1)
         st.rerun()
-    if cols[2].button("▶️ Next", use_container_width=True):
+    if cols[2].button("▶️ Next", width="stretch"):
         st.session_state.current_day = min(
             max_day_index, st.session_state.current_day + 1
         )
         st.rerun()
-    if cols[3].button("⏭️ Last", use_container_width=True):
+    if cols[3].button("⏭️ Last", width="stretch"):
         st.session_state.current_day = max_day_index
         st.rerun()
-    if today_is_in_window and cols[4].button("📅 Today", use_container_width=True):
+    if today_is_in_window and cols[4].button("📅 Today", width="stretch"):
         st.session_state.current_day = today_day_index
         st.rerun()
+
+    st.slider(
+        "Current Day in Period",
+        min_value=0,
+        max_value=max_day_index,
+        value=st.session_state.current_day,
+        key="current_day",  # Bind directly to session state
+        help="Slide to simulate progression through the accumulation period (Day 0 is the start).",
+    )
 
     st.markdown("---")
 
