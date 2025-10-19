@@ -1,6 +1,6 @@
 import streamlit as st
 from dashboard.backend.gsheet_utils import add_user_info_to_sheet, does_user_exist
-from datetime import datetime
+from dashboard.config import TODAY  # Use the centralized TODAY constant
 
 
 def authenticate():
@@ -24,7 +24,8 @@ def authenticate():
             to_add = {
                 "user_email": st.user.get("email"),
                 "budget": 1000,
-                "start_date": datetime.today().strftime("%Y-%m-%d"),
+                # Use the consistent TODAY from config
+                "start_date": TODAY.strftime("%Y-%m-%d"),
                 "investment_period": 12,
                 "boost_factor": 1.25,
             }
@@ -128,8 +129,4 @@ def authenticate():
                     st.login()
             with col2:
                 st.image("dashboard/images/bitcoin_logo.svg")
-
-        # Stop execution - don't show the rest of the app
-        # st.info("Please log in to access the dashboard.")
-        # st.stop()
         return False
