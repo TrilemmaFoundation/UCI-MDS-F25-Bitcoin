@@ -89,7 +89,10 @@ def load_bitcoin_data():
         response.raise_for_status()
 
         all_data = pd.read_csv(
-            StringIO(response.text), index_col="time", parse_dates=True
+            StringIO(response.text),
+            index_col="time",
+            parse_dates=True,
+            usecols=["time", "PriceUSD"],  # Only load what you need
         )
         all_data.index = all_data.index.normalize().tz_localize(None)
         all_data = all_data[~all_data.index.duplicated(keep="last")].sort_index()
