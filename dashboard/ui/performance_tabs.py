@@ -180,10 +180,10 @@ def render_performance(
         ],
     }
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    tab1, tab2, tab3, tab4 = st.tabs(
         [
             "📈 Price & Signals",
-            "⚖️ Weight Distribution",
+            # "⚖️ Weight Distribution",
             "📊 Strategy Comparison",
             "📅 Purchasing Schedule",
             "🎯 Risk Metrics",
@@ -200,11 +200,11 @@ def render_performance(
             current_day=current_day,
         )
 
-    with tab2:
-        df_current_slice = df_window.iloc[: current_day + 1]
-        render_weight_distribution_chart(weights, df_current_slice)
+    # with tab2:
+    #     df_current_slice = df_window.iloc[: current_day + 1]
+    #     render_weight_distribution_chart(weights, df_current_slice)
 
-    with tab3:
+    with tab2:
         st.markdown("### Cumulative Sats-per-Dollar (SPD) Comparison")
         st.info(
             "Higher SPD means you are accumulating more Bitcoin for every dollar spent."
@@ -213,10 +213,10 @@ def render_performance(
         st.markdown("---")
         render_comparison_summary(metrics, dynamic_perf, uniform_perf)
 
-    with tab4:
+    with tab3:
         render_purchasing_calendar(df_current, dynamic_perf, weights, current_day)
 
-    with tab5:
+    with tab4:
         render_risk_metrics_tab(dynamic_perf, uniform_perf)
 
     st.markdown("<h3>Performance Metrics</h3>", unsafe_allow_html=True)
