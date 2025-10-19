@@ -78,13 +78,13 @@ def render_price_signals_chart(df_chart_display, weights, df_window, current_day
 
     fig.add_annotation(
         x=TODAY,
-        y=0.95,  # 1 = top of plotting area when yref='paper'
+        y=0.4,  # 1 = top of plotting area when yref='paper'
         xref="x",
         yref="paper",
         text=f"Today ({TODAY.date()})",
         showarrow=False,
         xanchor="left",  # similar to "top left" placement
-        yanchor="bottom",
+        yanchor="auto",
         bgcolor="rgba(255,255,255,0.05)",  # optional styling
         bordercolor="rgba(0,0,0,0.0)",
         font=dict(size=11),
@@ -101,13 +101,13 @@ def render_price_signals_chart(df_chart_display, weights, df_window, current_day
 
     fig.add_annotation(
         x=df_window.index[0],
-        y=0.95,  # 1 = top of plotting area when yref='paper'
+        y=0.4,  # 1 = top of plotting area when yref='paper'
         xref="x",
         yref="paper",
         text=f"Accumulation Start",
         showarrow=False,
-        xanchor="left",  # similar to "top left" placement
-        yanchor="bottom",
+        xanchor="right",  # similar to "top left" placement
+        yanchor="auto",
         bgcolor="rgba(255,255,255,0.05)",  # optional styling
         bordercolor="rgba(0,0,0,0.0)",
         font=dict(size=11),
@@ -177,7 +177,7 @@ def render_price_signals_chart(df_chart_display, weights, df_window, current_day
     )
     fig.update_yaxes(title_text="Price (USD)", type="log", row=1, col=1)
     fig.update_yaxes(title_text="Weight", row=2, col=1)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, config={"displayModeBar": True})
 
 
 # The other chart functions are okay and are omitted for brevity.
@@ -211,7 +211,7 @@ def render_weight_distribution_chart(weights, df_current):
         yaxis_title="Weight",
         height=400,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, config={"displayModeBar": True})
 
 
 def render_bayesian_learning_chart():
@@ -247,7 +247,7 @@ def render_bayesian_learning_chart():
             yaxis_title="Confidence (1/Variance)",
             hovermode="x unified",
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, config={"displayModeBar": True})
     else:
         st.info("ℹ️ Bayesian updates will appear after day 7")
 
@@ -279,4 +279,4 @@ def render_strategy_comparison_chart(dynamic_perf, uniform_perf):
         hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, config={"displayModeBar": True})
