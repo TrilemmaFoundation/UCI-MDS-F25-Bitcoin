@@ -48,3 +48,10 @@ Here are some short bios for each team member.
 **From:** Taizhou, Jiangsu, China  
 **Favorite Hobby or Fun Fact:** I love singing and popping street dance! Music and movement are my way of expressing creativity beyond data science.  
 **LinkedIn:** https://www.linkedin.com/in/qunli-liu-244a5822b
+
+### ![Yicheng Wen`]() ###
+**Name:** Yicheng Wen \
+**Undergrad:** The Chinese University of Hong Kong, Shenzhen\
+**From:** China  \
+**Favorite Hobby or Fun Fact:** I enjoy cooking and learning different cooking styles.  
+**LinkedIn:** www.linkedin.com/in/yicheng-wen
