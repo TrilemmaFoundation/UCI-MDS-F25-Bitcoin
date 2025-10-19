@@ -143,11 +143,10 @@ def compute_weights(df_window: pd.DataFrame, boost_alpha: float = 1.25) -> pd.Se
             temp_weights[redistribution_indices] -= per_day_reduction
         # else: skip this boost to maintain weight constraints
 
-    # 7. Assign back into pandas Series and return
-    # FIX: Use iloc instead of loc to ensure proper alignment
-    weights.iloc[:] = temp_weights
+    # 7. Assign the computed numpy array back into a pandas Series
+    weights = pd.Series(temp_weights, index=dates)
 
-    # 7. Validation: Ensure weights sum to approximately 1.0
+    # 8. Validation: Ensure weights sum to approximately 1.0
     weight_sum = weights.sum()
     if not np.isclose(weight_sum, 1.0, rtol=1e-5, atol=1e-8):
         # This should rarely happen with correct implementation
