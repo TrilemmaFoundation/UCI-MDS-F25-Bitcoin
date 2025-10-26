@@ -10,7 +10,7 @@ import os
 # A single, timezone-naive, normalized timestamp for "today".
 # This is the central reference point for the entire application.
 TODAY = pd.Timestamp.now().normalize()
-
+print(TODAY)
 # The start date for fetching historical data.
 BACKTEST_START = "2011-06-01"
 

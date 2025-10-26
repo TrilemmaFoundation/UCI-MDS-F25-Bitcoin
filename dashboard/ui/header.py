@@ -6,7 +6,7 @@ import pandas as pd
 def render_header(df_btc, yesterday_formatted):
     """Renders the main header and data information box."""
     st.markdown(
-        '<p class="main-header">₿ Bitcoin Bayesian Accumulation Dashboard</p>',
+        '<p class="main-header">₿ Bitcoin Accumulation Dashboard</p>',
         unsafe_allow_html=True,
     )
     # st.markdown(

@@ -71,42 +71,43 @@ def render_sidebar():
         - Monthly: ${monthly_avg:,.2f}
         """
         )
-        st.markdown("---")
+        # st.markdown("---")
 
         # Model Selection
-        st.markdown("### Model Selection")
-        model_choice = st.selectbox(
-            "Choose Strategy Model",
-            options=["Base Model", "GT-MSA-S25-Trilemma Model"],
-            index=0,
-            help="Select which Bitcoin accumulation model to use",
-        )
+        # st.markdown("### Model Selection")
+        # model_choice = st.selectbox(
+        #     "Choose Strategy Model",
+        #     options=["Base Model", "GT-MSA-S25-Trilemma Model"],
+        #     index=0,
+        #     help="Select which Bitcoin accumulation model to use",
+        # )
+        model_choice = "GT-MSA-S25-Trilemma Model"
 
-        st.markdown("---")
+        # st.markdown("---")
 
         # Strategy Parameters (code unchanged)
-        st.markdown("### Strategy Parameters")
+        # st.markdown("### Strategy Parameters")
 
         # Only show boost_alpha for current model
-        if model_choice == "Base Model":
-            boost_alpha = st.slider(
-                "Boost Factor (α)",
-                0.5,
-                5.0,
-                default_boost_val,
-                0.05,
-                help="Controls how aggressively to buy during dips.",
-            )
-            st.info(
-                "ℹ️ Choose your boost factor for the base model (71.6% final score with α=1.25)"
-            )
-        else:
-            # For GT model, set a default (model doesn't use this parameter)
-            boost_alpha = 1.25
-            st.info(
-                "ℹ️ GT-MSA-S25-Trilemma model uses optimized parameters (94.5% final score)"
-            )
-
+        # if model_choice == "Base Model":
+        #     boost_alpha = st.slider(
+        #         "Boost Factor (α)",
+        #         0.5,
+        #         5.0,
+        #         default_boost_val,
+        #         0.05,
+        #         help="Controls how aggressively to buy during dips.",
+        #     )
+        #     st.info(
+        #         "ℹ️ Choose your boost factor for the base model (71.6% final score with α=1.25)"
+        #     )
+        # else:
+        #     # For GT model, set a default (model doesn't use this parameter)
+        #     boost_alpha = 1.25
+        #     st.info(
+        #         "ℹ️ GT-MSA-S25-Trilemma model uses optimized parameters (94.5% final score)"
+        #     )
+        boost_alpha = 1.25
         # Show boost factor interpretation only for current model
         if model_choice == "Base Model":
             if boost_alpha < 1.0:
@@ -292,5 +293,5 @@ def render_sidebar():
         "daily_avg": daily_avg,
         "monthly_avg": monthly_avg,
         "investment_window": investment_window,
-        "model_choice": model_choice,
+        "model_choice": "GT-MSA-S25-Trilemma Model",
     }

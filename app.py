@@ -17,5 +17,11 @@ def initialize_user_session():
 initialize_user_session()
 
 
-pg = st.navigation(["dashboard/Accumulation_Dashboard.py", "dashboard/About.py"])
+pg = st.navigation(
+    [
+        "dashboard/Accumulation_Dashboard.py",
+        "dashboard/Advanced_Analytics.py",
+        "dashboard/About.py",
+    ]
+)
 pg.run()

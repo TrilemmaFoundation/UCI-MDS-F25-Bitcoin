@@ -180,12 +180,10 @@ def render_performance(
         ],
     }
 
-    tab1, tab2, tab3, tab4 = st.tabs(
+    tab1, tab2, tab3 = st.tabs(
         [
             "📈 Price & Signals",
-            # "⚖️ Weight Distribution",
             "📊 Strategy Comparison",
-            "📅 Purchasing Schedule",
             "🎯 Risk Metrics",
         ]
     )
@@ -213,10 +211,10 @@ def render_performance(
         st.markdown("---")
         render_comparison_summary(metrics, dynamic_perf, uniform_perf)
 
-    with tab3:
-        render_purchasing_calendar(df_current, dynamic_perf, weights, current_day)
+    # with tab3:
+    #     render_purchasing_calendar(df_current, dynamic_perf, weights, current_day)
 
-    with tab4:
+    with tab3:
         render_risk_metrics_tab(dynamic_perf, uniform_perf)
 
     st.markdown("<h3>Performance Metrics</h3>", unsafe_allow_html=True)
@@ -361,7 +359,7 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
     except Exception as e:
         st.error(f"Error constructing features: {e}")
         return
-
+    st.markdown("---")
     st.markdown("### 📅 Daily Purchasing Schedule")
     st.markdown("*Daily investment plan details and analysis*")
 
@@ -375,107 +373,107 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
     with calendar_container:
         current_data["YearMonth"] = current_data["Date"].dt.to_period("M")
 
-        for period in sorted(current_data["YearMonth"].unique()):
+        for period in sorted(current_data["YearMonth"].unique(), reverse=True):
             month_data = current_data[current_data["YearMonth"] == period]
             month_start = month_data.iloc[0]["Date"]
+            with st.expander(month_start.strftime("%B %Y")):
+                st.markdown(f"### {month_start.strftime('%B %Y')}")
 
-            st.markdown(f"### {month_start.strftime('%B %Y')}")
+                month_year = period.to_timestamp()
+                first_day = month_year.replace(day=1)
 
-            month_year = period.to_timestamp()
-            first_day = month_year.replace(day=1)
+                days_in_month = cal_module.monthrange(first_day.year, first_day.month)[
+                    1
+                ]
+                first_weekday = first_day.weekday()
 
-            days_in_month = cal_module.monthrange(first_day.year, first_day.month)[1]
-            first_weekday = first_day.weekday()
+                day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-            day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                header_cols = st.columns(7)
+                for i, day_name in enumerate(day_names):
+                    with header_cols[i]:
+                        st.markdown(f"**{day_name}**")
 
-            header_cols = st.columns(7)
-            for i, day_name in enumerate(day_names):
-                with header_cols[i]:
-                    st.markdown(f"**{day_name}**")
+                total_cells = first_weekday + days_in_month
+                num_weeks = (total_cells + 6) // 7
 
-            total_cells = first_weekday + days_in_month
-            num_weeks = (total_cells + 6) // 7
+                for week in range(num_weeks):
+                    cols = st.columns(7)
+                    for day_of_week in range(7):
+                        cell_num = week * 7 + day_of_week
 
-            for week in range(num_weeks):
-                cols = st.columns(7)
-                for day_of_week in range(7):
-                    cell_num = week * 7 + day_of_week
+                        with cols[day_of_week]:
+                            if cell_num < first_weekday:
+                                st.markdown("")
+                            elif cell_num < first_weekday + days_in_month:
+                                day_num = cell_num - first_weekday + 1
+                                current_date = first_day.replace(day=day_num)
 
-                    with cols[day_of_week]:
-                        if cell_num < first_weekday:
-                            st.markdown("")
-                        elif cell_num < first_weekday + days_in_month:
-                            day_num = cell_num - first_weekday + 1
-                            current_date = first_day.replace(day=day_num)
+                                day_data = month_data[
+                                    month_data["Date"].dt.date == current_date.date()
+                                ]
 
-                            day_data = month_data[
-                                month_data["Date"].dt.date == current_date.date()
-                            ]
+                                if not day_data.empty:
+                                    day_info = day_data.iloc[-1]
 
-                            if not day_data.empty:
-                                day_info = day_data.iloc[-1]
+                                    price = day_info["Price"]
+                                    amount_spent = day_info["Amount_Spent"]
+                                    weight = day_info["Weight"]
 
-                                price = day_info["Price"]
-                                amount_spent = day_info["Amount_Spent"]
-                                weight = day_info["Weight"]
+                                    signal_style = _get_signal_style(weight, avg_weight)
 
-                                signal_style = _get_signal_style(weight, avg_weight)
-
-                                day_style = f"""
-                                <div style="
-                                    border: 2px solid {signal_style['color']};
-                                    border-radius: 8px;
-                                    padding: 8px;
-                                    margin: 2px;
-                                    background-color: rgba(255,255,255,0.9);
-                                    text-align: center;
-                                    min-height: 80px;
-                                ">
-                                    <div style="font-weight: bold; font-size: 14px;">
-                                        {day_num}
-                                    </div>
-                                    <div style="font-size: 10px; color: {signal_style['color']}; margin: 2px 0;">
-                                        {signal_style['emoji']} {signal_style['text']}
-                                    </div>
-                                    <div style="font-size: 9px; margin: 2px 0;">
-                                        <strong>${price:,.0f}</strong>
-                                    </div>
-                                    <div style="font-size: 8px; color: #666;">
-                                        ${amount_spent:.0f}
-                                    </div>
-                                </div>
-                                """
-                                st.markdown(day_style, unsafe_allow_html=True)
-                            else:
-                                if current_date.date() <= datetime.now().date():
-                                    st.markdown(
-                                        f"""
+                                    day_style = f"""
                                     <div style="
-                                        border: 1px solid #ccc;
+                                        border: 2px solid {signal_style['color']};
                                         border-radius: 8px;
                                         padding: 8px;
                                         margin: 2px;
-                                        background-color: rgba(240,240,240,0.5);
+                                        background-color: rgba(255,255,255,0.9);
                                         text-align: center;
                                         min-height: 80px;
                                     ">
                                         <div style="font-weight: bold; font-size: 14px;">
                                             {day_num}
                                         </div>
-                                        <div style="font-size: 10px; color: #999; margin: 2px 0;">
-                                            No Purchase
+                                        <div style="font-size: 10px; color: {signal_style['color']}; margin: 2px 0;">
+                                            {signal_style['emoji']} {signal_style['text']}
+                                        </div>
+                                        <div style="font-size: 9px; margin: 2px 0;">
+                                            <strong>${price:,.0f}</strong>
+                                        </div>
+                                        <div style="font-size: 8px; color: #666;">
+                                            ${amount_spent:.0f}
                                         </div>
                                     </div>
-                                    """,
-                                        unsafe_allow_html=True,
-                                    )
+                                    """
+                                    st.markdown(day_style, unsafe_allow_html=True)
                                 else:
-                                    st.markdown("")
-                        else:
-                            st.markdown("")
-
-            st.markdown("---")
+                                    if current_date.date() <= datetime.now().date():
+                                        st.markdown(
+                                            f"""
+                                        <div style="
+                                            border: 1px solid #ccc;
+                                            border-radius: 8px;
+                                            padding: 8px;
+                                            margin: 2px;
+                                            background-color: rgba(240,240,240,0.5);
+                                            text-align: center;
+                                            min-height: 80px;
+                                        ">
+                                            <div style="font-weight: bold; font-size: 14px;">
+                                                {day_num}
+                                            </div>
+                                            <div style="font-size: 10px; color: #999; margin: 2px 0;">
+                                                No Purchase
+                                            </div>
+                                        </div>
+                                        """,
+                                            unsafe_allow_html=True,
+                                        )
+                                    else:
+                                        st.markdown("")
+                            else:
+                                st.markdown("")
 
         st.markdown("#### Legend")
         legend_cols = st.columns(5)

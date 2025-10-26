@@ -12,7 +12,7 @@ from dashboard.model.strategy_new import compute_weights
 from dashboard.model.strategy_gt import (
     compute_weights as compute_weights_gt,
 )  # Example for alternate model
-from dashboard.sidebar_simplified import render_sidebar
+from dashboard.sidebar import render_sidebar
 from dashboard.simulation import (
     simulate_accumulation,
     calculate_uniform_dca_performance,
@@ -22,7 +22,6 @@ from dashboard.ui.header import render_header
 from dashboard.ui.controls import render_controls
 from dashboard.ui.performance_tabs import render_performance
 from dashboard.ui.recommendations import render_recommendations
-from dashboard.ui.performance_tabs import render_purchasing_calendar
 
 
 def initialize_session_state():
@@ -100,7 +99,7 @@ def main():
     params = render_sidebar()
 
     # --- 2. Data Loading ---
-    with st.spinner("📥 Loading Bitcoin price data..."):
+    with st.spinner("📥 Loading Bitcoin price data and generating forecast..."):
         df_btc = load_bitcoin_data()
     if df_btc is None or df_btc.empty:
         st.error(
@@ -149,7 +148,15 @@ def main():
     df_chart_display = df_btc.loc[chart_start_date:chart_end_date].copy()
 
     # Render all performance tabs (Portfolio, Charts, etc.)
-    render_purchasing_calendar(df_window, dynamic_perf, weights, current_day)
+    render_performance(
+        df_window=df_window,
+        weights=weights,
+        dynamic_perf=dynamic_perf,
+        uniform_perf=uniform_perf,
+        current_day=current_day,
+        df_for_chart=df_chart_display,
+        model_choice=params["model_choice"],
+    )
 
 
 if __name__ == "__main__":
