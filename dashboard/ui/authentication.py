@@ -104,7 +104,7 @@ def authenticate():
         )
 
         # Render profile dropdown
-        print(st.user.to_dict())
+        # print(st.user.to_dict())
         # st.image(st.user.get("picture"))
         st.markdown(
             f"""
