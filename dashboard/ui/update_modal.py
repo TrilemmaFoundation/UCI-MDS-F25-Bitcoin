@@ -1,18 +1,20 @@
 import streamlit as st
 from dashboard.backend.gsheet_utils import update_user_preferences
 import time
+import pandas as pd
+from dashboard.config import TODAY
 
 
 def modal():
     if st.user.get("email"):
         with st.popover(
-            "Update your saved investment parameters",
+            "Update info",
         ):
             st.markdown("Save your investment info")
             budget = st.number_input("What's your budget?", value=1000, step=100)
             start_date = st.date_input(
                 "Start date",
-                value="today",
+                value=TODAY - pd.DateOffset(months=6),
             )
             investment_period = st.number_input("Investment window (months)", value=12)
             boost_factor = st.slider(
