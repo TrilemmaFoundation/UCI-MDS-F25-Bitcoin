@@ -5,10 +5,10 @@ import pandas as pd
 
 def render_header(df_btc, yesterday_formatted):
     """Renders the main header and data information box."""
-    st.markdown(
-        '<p class="main-header">₿ Bitcoin Accumulation Dashboard</p>',
-        unsafe_allow_html=True,
-    )
+    # st.markdown(
+    #     '<p class="main-header">₿ Bitcoin Accumulation Dashboard</p>',
+    #     unsafe_allow_html=True,
+    # )
     # st.markdown(
     #     '<p class="sub-header">Dynamic Buy-The-Dip Strategy with Real-Time Bayesian Learning</p>',
     #     unsafe_allow_html=True,
