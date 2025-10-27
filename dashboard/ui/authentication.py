@@ -33,10 +33,9 @@ def authenticate():
 
         # Show welcome message in sidebar
         with st.sidebar:
-            st.write(
-                f"Welcome, {st.user.get('name')}! You're logged in, so we've saved your budget, investment window, start date, and boost factor."
-            )
 
+            with st.expander(f"Welcome, {st.user.get('name').split(' ')[0]}!"):
+                st.write(f"You're logged in, so we've saved your investment details.")
         # Get provider for display
         provider = st.user.get("sub", "unknown|unknown").split("|")[0]
 
@@ -57,6 +56,7 @@ def authenticate():
                 cursor: pointer;
                 display: block;
             }
+            
             .dropdown-content {
                 display: none;
                 position: absolute;
@@ -104,12 +104,14 @@ def authenticate():
         )
 
         # Render profile dropdown
+        print(st.user.to_dict())
+        # st.image(st.user.get("picture"))
         st.markdown(
             f"""
         <div class="profile-dropdown">
             <img src="{st.user.get("picture", "")}" alt="Profile Picture" class="profile-img">
             <div class="dropdown-content">
-                <div>Welcome, <strong>{st.user.get("name", "User")}</strong></div>
+                <div>Howdy, <strong>{st.user.get("name", "User").split(' ')[0]}</strong></div>
                 <div style="margin-top:6px; font-size:13px;">
                     Logged in via {provider}
                 </div>
