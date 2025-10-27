@@ -1,4 +1,4 @@
-# ui/recommendations.py
+# dashboard/ui/recommendations.py
 import streamlit as st
 import pandas as pd
 from dashboard.model.strategy_new import construct_features, get_buy_signal_strength
@@ -82,9 +82,33 @@ def render_recommendations(dynamic_perf, df_current, weights, budget, current_da
             )
 
         # --- Budget Progress ---
-        remaining_budget = dynamic_perf.iloc[-1]["Remaining_Budget"]
-        spent_pct = (budget - remaining_budget) / budget
+        # FIXED: Calculate based on the ENTIRE investment window, not just up to current_day
+        total_weight_allocated = weights.iloc[: current_day + 1].sum()
+        spent_so_far = budget * total_weight_allocated
+        remaining_budget = budget - spent_so_far
+
+        # Calculate what percentage of the ENTIRE investment window we've completed
+        total_days = len(df_current)
+        days_elapsed = current_day + 1
+        time_progress = days_elapsed / total_days
+
         st.metric(
             "Remaining Budget After Today's Purchase", f"${remaining_budget:,.2f}"
         )
-        st.progress(spent_pct, text=f"{spent_pct:.1%} of total budget deployed")
+
+        # Show two progress bars for clarity
+        col_prog1, col_prog2 = st.columns(2)
+        with col_prog1:
+            spent_pct = spent_so_far / budget
+            st.progress(spent_pct, text=f"Budget Deployed: {spent_pct:.1%}")
+        with col_prog2:
+            st.progress(time_progress, text=f"Investment Period: {time_progress:.1%}")
+
+        # Add helpful context if there's a mismatch
+        if "Type" in df_current.columns:
+            future_days = (df_current["Type"] == "Future").sum()
+            if future_days > 0:
+                future_allocation = weights.iloc[current_day + 1 :].sum() * budget
+                st.info(
+                    f"📅 **Future Allocations:** ${future_allocation:,.2f} reserved for {future_days} upcoming days"
+                )
