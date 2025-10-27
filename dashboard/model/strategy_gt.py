@@ -1,4 +1,4 @@
-# model/strategy_gt.py
+# dashboard/model/strategy_gt.py
 """
 GT-MSA-S25-Trilemma Dynamic DCA Strategy Implementation
 
@@ -23,11 +23,33 @@ FEATURES = [f"z{w}" for w in WINDOWS]
 PROTOTYPES = [(0.5, 5.0), (1.0, 1.0), (5.0, 0.5)]
 
 # Optimized theta parameters from the final model run (94.5% score)
-THETA = np.array([
-    1.3507, 1.073, -1.226, 2.5141, 2.9946, -0.4083, -0.1082, -0.6809,
-    0.3465, -0.6804, -2.9974, -2.9991, -1.2658, -0.368, 0.7567, -1.9627,
-    -1.9124, 2.9983, 0.5704, 0.0, 0.8669, 1.2546, 5.0
-])
+THETA = np.array(
+    [
+        1.3507,
+        1.073,
+        -1.226,
+        2.5141,
+        2.9946,
+        -0.4083,
+        -0.1082,
+        -0.6809,
+        0.3465,
+        -0.6804,
+        -2.9974,
+        -2.9991,
+        -1.2658,
+        -0.368,
+        0.7567,
+        -1.9627,
+        -1.9124,
+        2.9983,
+        0.5704,
+        0.0,
+        0.8669,
+        1.2546,
+        5.0,
+    ]
+)
 
 # Global cache for features to avoid recomputation
 _FULL_FEATURES = None
@@ -67,9 +89,11 @@ def allocate_sequential(raw: np.ndarray) -> np.ndarray:
 def beta_mix_pdf(n: int, mix: np.ndarray) -> np.ndarray:
     """Generates a smooth baseline curve from a mixture of Beta distributions."""
     t = np.linspace(0.5 / n, 1 - 0.5 / n, n)
-    return (mix[0] * beta.pdf(t, *PROTOTYPES[0]) +
-            mix[1] * beta.pdf(t, *PROTOTYPES[1]) +
-            mix[2] * beta.pdf(t, *PROTOTYPES[2])) / n
+    return (
+        mix[0] * beta.pdf(t, *PROTOTYPES[0])
+        + mix[1] * beta.pdf(t, *PROTOTYPES[1])
+        + mix[2] * beta.pdf(t, *PROTOTYPES[2])
+    ) / n
 
 
 def zscore(s: pd.Series, win: int) -> pd.Series:
@@ -85,87 +109,108 @@ def construct_features(df: pd.DataFrame) -> pd.DataFrame:
     Uses log-price transformation and lagged features to avoid look-ahead bias.
     """
     global _FULL_FEATURES
-    
+
     # Ensure we have PriceUSD column
     if "PriceUSD" not in df.columns:
         raise ValueError("DataFrame must contain 'PriceUSD' column")
-    
+
     df_copy = df[["PriceUSD"]].copy()
-    
+
     # Calculate log prices
     log_prices = np.log(df_copy["PriceUSD"])
-    
+
     # Calculate z-scores for each window and clip extreme values
     z_features = {}
     for win in WINDOWS:
         z_features[f"z{win}"] = zscore(log_prices, win).clip(-4, 4)
-    
+
     z_df = pd.DataFrame(z_features, index=df.index)
-    
+
     # Lag the features by 1 day to avoid look-ahead bias
     z_lagged = z_df.shift(1).fillna(0)
-    
+
     # Combine with original price data
     result = df_copy.join(z_lagged)
-    
+
     return result
 
 
 def compute_weights(df_window: pd.DataFrame) -> pd.Series:
     """
     Compute portfolio weights using the GT-MSA-S25-Trilemma model.
-    
+
     This implements the two-layer system:
     1. Strategic layer (α parameters): Sets annual investment plan using 5 momentum signals
     2. Tactical layer (β parameters): Makes daily adjustments based on market conditions
-    
+
     Args:
-        df_window: DataFrame with price data for the investment window
-        
+        df_window: DataFrame with price data for the investment window (may include future dates)
+
     Returns:
         Series of daily weights that sum to 1.0
     """
     if df_window.empty:
         return pd.Series(dtype=float)
-    
+
     # Ensure we have enough data for the longest window (1461 days)
     if len(df_window) < 50:  # Minimum data requirement
         # Return uniform weights if not enough data
         n_days = len(df_window)
-        return pd.Series(1.0/n_days, index=df_window.index)
-    
+        return pd.Series(1.0 / n_days, index=df_window.index)
+
+    # For future dates, use last known price for feature calculation
+    df_for_features = df_window.copy()
+    if "Type" in df_for_features.columns:
+        # Forward fill prices for future dates
+        df_for_features["PriceUSD"] = df_for_features["PriceUSD"].ffill()
+
     # Construct features
     try:
-        feat_slice = construct_features(df_window)
+        feat_slice = construct_features(df_for_features)
     except Exception as e:
         # Fallback to uniform weights if feature construction fails
         n_days = len(df_window)
-        return pd.Series(1.0/n_days, index=df_window.index)
-    
+        return pd.Series(1.0 / n_days, index=df_window.index)
+
     # Split theta into alpha and beta parameters
     alpha = THETA[:18].reshape(3, 6)  # 3x6 matrix for strategic layer
-    beta_v = THETA[18:]               # 5-element vector for tactical layer
-    
+    beta_v = THETA[18:]  # 5-element vector for tactical layer
+
     # Use features from the first day to set the annual strategy
     first_day_feats = feat_slice[FEATURES].iloc[0].values
     mix = softmax(alpha @ np.r_[1, first_day_feats])
-    
+
     # Calculate the components of the allocation formula
     n_days = len(feat_slice)
     base_alloc = beta_mix_pdf(n_days, mix)
-    dynamic_signal = np.exp(-(feat_slice[FEATURES].values @ beta_v))
-    
+
+    # For future dates, use the features from the last historical day
+    dynamic_features = feat_slice[FEATURES].values.copy()
+    if "Type" in df_window.columns:
+        # Find last historical index
+        historical_mask = df_window["Type"] == "Historical"
+        if historical_mask.any():
+            last_hist_idx = historical_mask[::-1].idxmax()
+            last_hist_position = df_window.index.get_loc(last_hist_idx)
+            last_hist_features = feat_slice[FEATURES].iloc[last_hist_position].values
+
+            # Use last historical features for all future dates
+            for i in range(last_hist_position + 1, len(dynamic_features)):
+                dynamic_features[i] = last_hist_features
+
+    dynamic_signal = np.exp(-(dynamic_features @ beta_v))
+
     # Combine signals and compute final weights
     raw_weights = base_alloc * dynamic_signal
     final_weights = allocate_sequential(raw_weights)
-    
+
     return pd.Series(final_weights, index=feat_slice.index)
 
 
 def get_model_performance_metrics() -> dict:
     """
     Returns the official performance metrics for the GT model.
-    
+
     Returns:
         Dictionary with model performance statistics
     """
@@ -178,52 +223,52 @@ def get_model_performance_metrics() -> dict:
             "test_period": "2021-2025",
             "win_rate": 100.0,
             "reward_weighted_percentile": 82.91,
-            "score": 91.45
-        }
+            "score": 91.45,
+        },
     }
 
 
 def get_feature_explanations() -> dict:
     """
     Returns explanations of the 5 momentum features used by the model.
-    
+
     Returns:
         Dictionary with feature descriptions
     """
     return {
         "z30": "30-day momentum: Short-term price momentum",
-        "z90": "90-day momentum: Quarterly trend analysis", 
+        "z90": "90-day momentum: Quarterly trend analysis",
         "z180": "180-day momentum: 6-month trend strength",
         "z365": "365-day momentum: Annual cycle position",
-        "z1461": "1461-day momentum: 4-year halving cycle awareness"
+        "z1461": "1461-day momentum: 4-year halving cycle awareness",
     }
 
 
 def validate_gt_weights(weights: pd.Series) -> dict:
     """
     Validate that weights meet all framework requirements for the GT model.
-    
+
     Args:
         weights: Series of daily weights
-        
+
     Returns:
         Dictionary with validation results
     """
     results = {"valid": True, "errors": [], "warnings": []}
-    
+
     # Check for non-positive weights
     if (weights <= 0).any():
         results["valid"] = False
         results["errors"].append("Found non-positive weights")
-    
+
     # Check minimum weight constraint
     if (weights < MIN_WEIGHT).any():
         results["valid"] = False
         results["errors"].append(f"Found weights below MIN_WEIGHT ({MIN_WEIGHT})")
-    
+
     # Check sum to 1.0
     weight_sum = weights.sum()
     if not np.isclose(weight_sum, 1.0, rtol=1e-5, atol=1e-8):
         results["warnings"].append(f"Weights sum to {weight_sum:.6f} (expected 1.0)")
-    
+
     return results
