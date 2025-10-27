@@ -143,8 +143,6 @@ def main():
         df_window = pd.concat([df_window, future_df])
 
     # --- 4. Core Computations ---
-    print(df_window.head(5))
-    print(df_window.tail(5))
     with st.spinner(f"🧮 Computing weights using {params['model_choice']}..."):
         if params["model_choice"] == "GT-MSA-S25-Trilemma Model":
             weights = compute_weights_gt(df_window)
