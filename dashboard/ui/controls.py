@@ -129,10 +129,19 @@ def render_controls(df_btc, investment_window):
     # --- Time Control Buttons (using 0-based index) ---
     max_day_index = len(df_window) - 1
 
-    # Ensure current_day from state is within bounds
+    # --- MODIFICATION START ---
+    # Determine the max value for the slider to prevent going into the future
+    slider_max_day = max_day_index
+    if today_is_in_window and today_day_index is not None:
+        slider_max_day = today_day_index
+    elif start_ts > config.TODAY:  # If the whole window is in the future
+        slider_max_day = 0
+
+    # Ensure current_day from state is within the new, restricted bounds
     st.session_state.current_day = min(
-        st.session_state.get("current_day", 0), max_day_index
+        st.session_state.get("current_day", 0), slider_max_day
     )
+    # --- MODIFICATION END ---
 
     current_day = st.session_state.current_day
 
@@ -148,17 +157,17 @@ def render_controls(df_btc, investment_window):
         st.rerun()
     col_idx += 1
 
-    # Next Button
+    # Next Button - Use slider_max_day to cap navigation
     if cols[col_idx].button("▶️ Next", use_container_width=True):
         st.session_state.current_day = min(
-            max_day_index, st.session_state.current_day + 1
+            slider_max_day, st.session_state.current_day + 1
         )
         st.rerun()
     col_idx += 1
 
-    # Last Button
+    # Last Button - Use slider_max_day to cap navigation
     if cols[col_idx].button("⏭️ Last", use_container_width=True):
-        st.session_state.current_day = max_day_index
+        st.session_state.current_day = slider_max_day
         st.rerun()
     col_idx += 1
 
@@ -171,7 +180,7 @@ def render_controls(df_btc, investment_window):
     st.slider(
         "Current Day in Period",
         min_value=0,
-        max_value=max_day_index,
+        max_value=slider_max_day,  # Use the calculated max day
         value=st.session_state.current_day,
         key="current_day",  # Bind directly to session state
         help="Slide to simulate progression through the accumulation period (Day 0 is the start).",
