@@ -219,7 +219,7 @@ def render_performance(
 
     st.markdown("<h3>Performance Metrics</h3>", unsafe_allow_html=True)
     st.dataframe(pd.DataFrame(metrics_data), hide_index=True)
-    st.markdown("---")
+    # st.markdown("---")
 
 
 def render_risk_metrics_tab(dynamic_perf, uniform_perf):
