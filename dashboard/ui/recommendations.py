@@ -102,7 +102,9 @@ def render_recommendations(dynamic_perf, df_current, weights, budget, current_da
             spent_pct = spent_so_far / budget
             st.progress(spent_pct, text=f"Budget Deployed: {spent_pct:.1%}")
         with col_prog2:
-            st.progress(time_progress, text=f"Investment Period: {time_progress:.1%}")
+            st.progress(
+                time_progress, text=f"Investment Period: {time_progress:.1%} complete"
+            )
 
         # Add helpful context if there's a mismatch
         if "Type" in df_current.columns:
@@ -110,5 +112,5 @@ def render_recommendations(dynamic_perf, df_current, weights, budget, current_da
             if future_days > 0:
                 future_allocation = weights.iloc[current_day + 1 :].sum() * budget
                 st.info(
-                    f"📅 **Future Allocations:** ${future_allocation:,.2f} reserved for {future_days} upcoming days"
+                    f"📅 **Future Allocations:** ${future_allocation:,.2f} is reserved for {future_days} upcoming days"
                 )
