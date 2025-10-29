@@ -249,7 +249,7 @@ def render_already_subscribed():
                 st.rerun()
         else:
             st.warning("Are you sure?")
-            col_yes, col_no = st.columns(2)
+            col_yes, col_no = st.columns([2, 1])
             with col_yes:
                 if st.button("Yes, Unsubscribe", use_container_width=True):
                     print(f"removing {potential_email}")
@@ -259,7 +259,7 @@ def render_already_subscribed():
                     time.sleep(1)
                     st.rerun()
             with col_no:
-                if st.button("Cancel", use_container_width=True):
+                if st.button("❌", use_container_width=True):
                     st.session_state.show_unsub_confirm = False
                     st.rerun()
 
