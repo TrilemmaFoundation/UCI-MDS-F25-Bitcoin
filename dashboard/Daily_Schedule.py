@@ -114,17 +114,18 @@ def main():
         df_btc, params["investment_window"]
     )
 
-    # --- NEW: Extend df_window with future dates if end date is in the future ---
+    # --- FIXED: Extend df_window with future dates if end date is in the future ---
     end_date = start_date + pd.DateOffset(days=params["investment_window"] - 1)
-    last_historical_date = df_btc[df_btc["Type"] == "Historical"].index.max()
+    last_date_in_window = df_window.index.max()
 
-    if end_date > last_historical_date:
-        # Calculate how many future days we need
-        future_days_needed = (end_date - last_historical_date).days
+    # Only create future data if we need dates beyond what we already have
+    if end_date > last_date_in_window:
+        # Calculate how many additional future days we need
+        future_days_needed = (end_date - last_date_in_window).days
 
-        # Create future date range
+        # Create future date range starting AFTER the last date in df_window
         future_dates = pd.date_range(
-            start=last_historical_date + pd.Timedelta(days=1),
+            start=last_date_in_window + pd.Timedelta(days=1),
             periods=future_days_needed,
             freq="D",
         )
@@ -141,6 +142,10 @@ def main():
 
         # Append future data to df_window
         df_window = pd.concat([df_window, future_df])
+
+        # Remove any duplicate indices (keep last)
+        df_window = df_window[~df_window.index.duplicated(keep="last")]
+        df_window = df_window.sort_index()
 
     # --- 4. Core Computations ---
     with st.spinner(f"🧮 Computing weights using {params['model_choice']}..."):
@@ -177,7 +182,9 @@ def main():
     df_chart_display = df_btc.loc[chart_start_date:chart_end_date].copy()
 
     # Render all performance tabs (Portfolio, Charts, etc.)
-    render_purchasing_calendar(df_window, dynamic_perf, weights, current_day)
+    render_purchasing_calendar(
+        df_window, dynamic_perf, weights, current_day, total_budget=params["budget"]
+    )
 
 
 if __name__ == "__main__":
