@@ -32,8 +32,8 @@ def send_email(subject: str, body: str, email_recipient: str):
         smtp.send_message(msg)
 
 
-send_email(
-    subject="Daily Allotment",
-    body="ayo ayo ayo 123",
-    email_recipient="smaueltown@gmail.com",
-)
+# send_email(
+#     subject="Daily Allotment",
+#     body="ayo ayo ayo 123",
+#     email_recipient="smaueltown@gmail.com",
+# )
