@@ -2,9 +2,9 @@ name: Email subscribers
 
 on:
   schedule:
-    # Runs the script every day at 23:00 UTC (1600 PST, 1900 EST)
-    # emails should fire by 1800 PST, 2100 EST
-    - cron: "0 23 * * *"
+    # Runs the script every day at 01:00 UTC (1800 PST, 2100 EST)
+    # emails should fire by 1900 PST, 2300 EST
+    - cron: "0 1 * * *"
   workflow_dispatch:
 
 
