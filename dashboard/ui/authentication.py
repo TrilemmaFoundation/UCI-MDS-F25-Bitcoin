@@ -33,9 +33,11 @@ def authenticate():
 
         # Show welcome message in sidebar
         with st.sidebar:
-
-            with st.expander(f"Welcome, {st.user.get('name').split(' ')[0]}!"):
-                st.write(f"You're logged in, so we've saved your investment details.")
+            if st.user.get("name"):
+                with st.expander(f"Welcome, {st.user.get('name').split(' ')[0]}!"):
+                    st.write(
+                        f"You're logged in, so we've saved your investment details."
+                    )
         # Get provider for display
         provider = st.user.get("sub", "unknown|unknown").split("|")[0]
 
