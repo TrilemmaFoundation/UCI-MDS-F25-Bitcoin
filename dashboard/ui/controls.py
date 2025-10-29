@@ -15,18 +15,15 @@ def render_controls(df_btc, investment_window):
 
     # --- Date Selection ---
     min_start_date = df_btc.index.min().date()
-    max_start_date = (TODAY - pd.DateOffset(days=1)).date()
-    if max_start_date < min_start_date:
-        st.error(f"Insufficient data for a {investment_window}-month window.")
-        st.stop()
+    # Allow selecting dates well into the future
+    max_start_date = (TODAY).date()
 
-    # Set a default start date from user info or one year before today
-    default_start = config.TODAY - pd.DateOffset(months=investment_window)
+    # Set a default start date from user info or today
+    default_start = config.TODAY
     if st.session_state.get("user_info") and "start_date" in st.session_state.user_info:
         default_start = pd.to_datetime(st.session_state.user_info["start_date"])
 
     # Create all columns for date inputs and buttons first
-    num_cols_temp = 7  # Max possible (will adjust later)
     widths = [2, 2, 1, 1, 1, 1, 1]
     cols = st.columns(widths)
 
@@ -58,28 +55,52 @@ def render_controls(df_btc, investment_window):
     col_idx += 1
 
     # --- DataFrame Window Extraction ---
-    # Get historical data up to the end date (or today if end_ts is in future)
+    # Get historical data up to the end date (or last available if end_ts is in future)
     last_historical_date = df_btc[df_btc["Type"] == "Historical"].index.max()
+
+    # Determine the actual start for historical data
+    # If start_ts is in the future, we'll start from the last historical date
+    historical_start = max(start_ts, df_btc.index.min())
     historical_end = min(end_ts, last_historical_date)
 
-    df_window = df_btc.loc[start_ts:historical_end].copy()
-
-    if len(df_window) < 30:
-        st.warning(
-            "⚠️ Selected period has insufficient data. Please choose another date."
-        )
-        st.stop()
+    # Extract historical data that overlaps with our window
+    if historical_start <= last_historical_date:
+        df_window = df_btc.loc[historical_start:historical_end].copy()
+    else:
+        # Entire window is in the future - create empty DataFrame with correct structure
+        df_window = pd.DataFrame(columns=["PriceUSD", "Type"])
+        df_window.index.name = "time"
 
     # --- Add Future Dates if Needed ---
-    if end_ts > last_historical_date:
-        # Calculate how many future days we need
-        future_start = last_historical_date + pd.Timedelta(days=1)
+    # Calculate if we need future data
+    future_needed = end_ts > last_historical_date
+
+    if future_needed:
+        # Determine where future data should start
+        if start_ts > last_historical_date:
+            # Entire window is in the future
+            future_start = start_ts
+            st.info(
+                f"ℹ️ The selected investment period is entirely in the future. "
+                f"Using last known BTC price (${df_btc['PriceUSD'].iloc[-1]:,.2f}) "
+                f"for DCA schedule planning."
+            )
+        else:
+            # Window spans historical and future
+            future_start = last_historical_date + pd.Timedelta(days=1)
+            future_days = (end_ts - future_start).days + 1
+            st.info(
+                f"ℹ️ Investment period extends {future_days} days into the future. "
+                f"Budget will be allocated across the entire {investment_window}-month period."
+            )
 
         # Create future date range
         future_dates = pd.date_range(start=future_start, end=end_ts, freq="D")
 
-        # Create placeholder future data with last known price
-        last_price = df_window["PriceUSD"].iloc[-1]
+        # Get last known price for future projections
+        last_price = df_btc["PriceUSD"].iloc[-1]
+
+        # Create placeholder future data
         future_df = pd.DataFrame(
             {
                 "PriceUSD": [last_price] * len(future_dates),
@@ -91,9 +112,12 @@ def render_controls(df_btc, investment_window):
         # Append future data to df_window
         df_window = pd.concat([df_window, future_df])
 
-        st.info(
-            f"ℹ️ Investment period extends {len(future_dates)} days into the future. Budget will be allocated across the entire {investment_window}-month period."
+    # Final validation - ensure we have some data
+    if len(df_window) < 1:
+        st.error(
+            "⚠️ Unable to create investment window. Please try a different date range."
         )
+        st.stop()
 
     # Check if today is in the window
     today_is_in_window = start_ts <= config.TODAY <= end_ts
@@ -104,15 +128,15 @@ def render_controls(df_btc, investment_window):
             # Use get_loc for a robust way to find the integer position of TODAY
             today_day_index = df_window.index.get_loc(config.TODAY)
         except KeyError:
-            # TODAY might not align perfectly with an index if data is missing
-            # Find the nearest date
-            if config.TODAY in df_window.index:
-                today_day_index = df_window.index.get_loc(config.TODAY)
-            else:
-                # Find closest date to today
-                closest_date = df_window.index[df_window.index <= config.TODAY][-1]
-                today_day_index = df_window.index.get_loc(closest_date)
-                today_is_in_window = True
+            # TODAY might not be in the index - find closest date
+            if config.TODAY <= df_window.index[-1]:
+                # Find closest date to today that's in our window
+                valid_dates = df_window.index[df_window.index <= config.TODAY]
+                if len(valid_dates) > 0:
+                    closest_date = valid_dates[-1]
+                    today_day_index = df_window.index.get_loc(closest_date)
+                else:
+                    today_is_in_window = False
 
     # Reset simulation if the date window changes
     if (
@@ -129,19 +153,19 @@ def render_controls(df_btc, investment_window):
     # --- Time Control Buttons (using 0-based index) ---
     max_day_index = len(df_window) - 1
 
-    # --- MODIFICATION START ---
     # Determine the max value for the slider to prevent going into the future
     slider_max_day = max_day_index
     if today_is_in_window and today_day_index is not None:
         slider_max_day = today_day_index
     elif start_ts > config.TODAY:  # If the whole window is in the future
-        slider_max_day = 0
+        slider_max_day = (
+            max_day_index  # Allow viewing entire future window for planning
+        )
 
     # Ensure current_day from state is within the new, restricted bounds
     st.session_state.current_day = min(
         st.session_state.get("current_day", 0), slider_max_day
     )
-    # --- MODIFICATION END ---
 
     current_day = st.session_state.current_day
 
@@ -177,14 +201,15 @@ def render_controls(df_btc, investment_window):
             st.session_state.current_day = today_day_index
             st.rerun()
 
-    st.slider(
-        "Current Day in Period",
-        min_value=0,
-        max_value=slider_max_day,  # Use the calculated max day
-        value=st.session_state.current_day,
-        key="current_day",  # Bind directly to session state
-        help="Slide to simulate progression through the accumulation period (Day 0 is the start).",
-    )
+    if slider_max_day != 0:
+        st.slider(
+            "Current Day in Period",
+            min_value=0,
+            max_value=slider_max_day,
+            value=st.session_state.current_day,
+            key="current_day",  # Bind directly to session state
+            help="Slide to simulate progression through the accumulation period (Day 0 is the start).",
+        )
 
     st.markdown("---")
 
