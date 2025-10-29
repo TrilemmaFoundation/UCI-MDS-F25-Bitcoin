@@ -1,0 +1,32 @@
+name: Email subscribers
+
+on:
+  schedule:
+    # Runs the script every day at 23:00 UTC (1600 PST, 1900 EST)
+    # emails should fire by 1800 PST, 2100 EST
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.13.7"
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run auto-emailer
+        env:
+            BTC_CAPSTONE_EMAIL_PASSWORD: ${{ secrets.BTC_CAPSTONE_EMAIL_PASSWORD }}
+            GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
+            GOOGLE_SHEETS_CLIENT_ID: ${{ secrets.GOOGLE_SHEETS_CLIENT_ID }}
+            GOOGLE_SHEETS_PRIVATE_KEY_ID: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY_ID }}
+        run: python dashboard/email_helpers/daily_emailer.py
