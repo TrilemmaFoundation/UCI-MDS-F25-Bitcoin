@@ -1,37 +1,39 @@
+import os
 import smtplib
 import ssl
 from email.message import EmailMessage
-import os
 
-# Define email sender and receiver
-email_sender = "bitcoin.accumulation.updates@gmail.com"
-email_password = os.getenv("BTC_CAPSTONE_EMAIL_PASSWORD", "")
+SMTP_HOST = "smtp.gmail.com"
+SMTP_PORT = 587  # STARTTLS
+
+EMAIL_SENDER = "bitcoin.accumulation.updates@gmail.com"
+EMAIL_PASSWORD = os.getenv(
+    "BTC_CAPSTONE_EMAIL_PASSWORD"
+)  # set this in your deployment env
+
+if not EMAIL_PASSWORD:
+    raise RuntimeError("Missing BTC_CAPSTONE_EMAIL_PASSWORD environment variable")
 
 
 def send_email(subject: str, body: str, email_recipient: str):
-    # Create email message
-    em = EmailMessage()
-    em["From"] = "Bitcoin Daily Purchase"
-    em["To"] = email_recipient
-    em["Subject"] = subject
+    msg = EmailMessage()
+    msg["From"] = f"Bitcoin Daily Purchase <{EMAIL_SENDER}>"
+    msg["To"] = email_recipient
+    msg["Subject"] = subject
+    msg.add_alternative(body, subtype="html")
 
-    em.add_alternative(body, subtype="html")
-
-    # Add SSL (layer of security)
-    context = ssl.create_default_context()
-
-    # Log in and send the email
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
-        smtp.login(email_sender, email_password)
-        response = smtp.sendmail(email_sender, email_recipient, em.as_string())
-        if not response:
-            print(f"Successfully sent email to {email_recipient}")
-        else:
-            print(f"Failed to send email. Server response: {response}")
+    # connect using plain SMTP then upgrade with STARTTLS
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
+        smtp.ehlo()
+        context = ssl.create_default_context()
+        smtp.starttls(context=context)
+        smtp.ehlo()
+        smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
+        smtp.send_message(msg)
 
 
-# send_email(
-#     subject="Daily Allotment",
-#     body="ayo ayo ayo 123",
-#     email_recipient="smaueltown@gmail.com",
-# )
+send_email(
+    subject="Daily Allotment",
+    body="ayo ayo ayo 123",
+    email_recipient="smaueltown@gmail.com",
+)
