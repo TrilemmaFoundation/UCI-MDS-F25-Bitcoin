@@ -22,6 +22,7 @@ pg = st.navigation(
         "dashboard/Daily_Schedule.py",
         "dashboard/Advanced_Analytics.py",
         "dashboard/News_Social.py",
+        "dashboard/Email_Updates.py",
         "dashboard/About.py",
     ]
 )
