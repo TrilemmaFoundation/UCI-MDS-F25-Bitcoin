@@ -78,7 +78,7 @@ def render_sidebar():
         model_choice = st.selectbox(
             "Choose Strategy Model",
             options=["Base Model", "GT-MSA-S25-Trilemma Model"],
-            index=0,
+            index=1,
             help="Select which Bitcoin accumulation model to use",
         )
 
