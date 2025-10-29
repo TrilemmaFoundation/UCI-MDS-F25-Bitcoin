@@ -156,6 +156,7 @@ def main():
         current_day=current_day,
         df_for_chart=df_chart_display,
         model_choice=params["model_choice"],
+        budget=params["budget"],
     )
 
 
