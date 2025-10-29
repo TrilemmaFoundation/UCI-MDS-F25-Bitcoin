@@ -206,7 +206,7 @@ def render_controls(df_btc, investment_window):
             "Current Day in Period",
             min_value=0,
             max_value=slider_max_day,
-            value=st.session_state.current_day,
+            # value=st.session_state.current_day,
             key="current_day",  # Bind directly to session state
             help="Slide to simulate progression through the accumulation period (Day 0 is the start).",
         )
