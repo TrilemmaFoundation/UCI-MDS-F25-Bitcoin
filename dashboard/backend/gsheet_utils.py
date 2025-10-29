@@ -9,12 +9,16 @@ from dashboard.config import (
 )
 from datetime import date, timedelta
 
-# 添加安全检查
-private_key = GOOGLE_SHEETS_PRIVATE_KEY.replace("\\n", "\n") if GOOGLE_SHEETS_PRIVATE_KEY else None
+# Add security checks
+private_key = (
+    GOOGLE_SHEETS_PRIVATE_KEY.replace("\\n", "\n")
+    if GOOGLE_SHEETS_PRIVATE_KEY
+    else None
+)
 private_key_id = GOOGLE_SHEETS_PRIVATE_KEY_ID
 client_id = GOOGLE_SHEETS_CLIENT_ID
 
-# 只有在配置完整时才初始化 Google Sheets
+# Initialize only when the Google Sheets configuration is complete
 GSHEET_ENABLED = all([private_key, private_key_id, client_id])
 
 if GSHEET_ENABLED:
@@ -74,6 +78,7 @@ def add_user_info_to_sheet(user_info: dict):
         "start_date",
         "investment_period",
         "boost_factor",
+        "email_opted_in",
     ]
 
     for field in validation_fields:
@@ -90,6 +95,7 @@ def add_user_info_to_sheet(user_info: dict):
         user_info["start_date"],
         user_info["investment_period"],
         user_info["boost_factor"],
+        0,
     ]
 
     worksheet.insert_row(master_list, first_blank_row())
@@ -142,7 +148,6 @@ def update_user_preferences(new_user_info: dict):
 
         if cell:
             row_num = cell.row
-            print(f"Found user at row {row_num}")
 
             headers = worksheet.row_values(1)
 
@@ -171,3 +176,84 @@ def does_user_exist(user_email: str):
             return False
     except Exception as e:
         return False
+
+
+def add_user_to_email_list(user_email: str):
+    if not GSHEET_ENABLED or worksheet is None:
+        print("Google Sheets not configured, skipping preference update")
+        return
+
+    try:
+
+        cell = worksheet.find(user_email)
+
+        if cell:
+            row_num = cell.row
+
+            headers = worksheet.row_values(1)
+
+            col_num = len(headers)
+            worksheet.update_cell(row_num, col_num, 1)
+
+            print(f"added user to email list: {user_email}")
+        else:
+            print(f"User not found: {user_email}")
+
+    except Exception as e:
+        print("error:", e)
+
+
+def is_user_already_on_email(user_email: str):
+    if not GSHEET_ENABLED or worksheet is None:
+        print("Google Sheets not configured, skipping preference update")
+        return
+
+    try:
+
+        cell = worksheet.find(user_email)
+
+        if cell:
+            row_num = cell.row
+
+            headers = worksheet.row_values(1)
+            vals = worksheet.row_values(row_num)
+            if vals[-1] == "1":
+                return True
+            else:
+                return False
+        else:
+            print(f"User not found: {user_email}")
+
+    except Exception as e:
+        print("error:", e)
+
+
+# print(is_user_already_on_email("smaueltown@gmail.com"))
+
+
+def remove_user_from_email_list(user_email: str):
+    if not GSHEET_ENABLED or worksheet is None:
+        print("Google Sheets not configured, skipping preference update")
+        return
+
+    try:
+
+        cell = worksheet.find(user_email)
+
+        if cell:
+            row_num = cell.row
+
+            headers = worksheet.row_values(1)
+
+            col_num = len(headers)
+            worksheet.update_cell(row_num, col_num, 0)
+
+            print(f"removed user from email list: {user_email}")
+        else:
+            print(f"User not found: {user_email}")
+
+    except Exception as e:
+        print("error:", e)
+
+
+# remove_user_from_email_list("smaueltown@gmail.com")
