@@ -145,8 +145,6 @@ def load_bitcoin_data():
             combined_df.index > TODAY, "Forecast", "Historical"
         )
 
-        print(combined_df.tail(5))
-
         return combined_df.dropna()
 
     except requests.exceptions.RequestException as e:
