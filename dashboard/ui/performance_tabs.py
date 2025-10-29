@@ -10,6 +10,7 @@ from dashboard.ui.charts import (
     render_bayesian_learning_chart,
     render_strategy_comparison_chart,
 )
+
 from dashboard.model.strategy_new import construct_features
 from dashboard.analytics.portfolio_metrics import PortfolioAnalyzer, compare_strategies
 
@@ -128,6 +129,7 @@ def render_performance(
     current_day,
     df_for_chart,
     model_choice,
+    budget,
 ):
     """
     Renders key metrics and the main tab layout for visualizations.
@@ -180,11 +182,12 @@ def render_performance(
         ],
     }
 
-    tab1, tab2, tab3 = st.tabs(
+    tab1, tab2, tab3, tab4 = st.tabs(
         [
             "📈 Price & Signals",
             "📊 Strategy Comparison",
             "🎯 Risk Metrics",
+            "📅 Purchasing Schedule",
         ]
     )
 
@@ -198,10 +201,6 @@ def render_performance(
             current_day=current_day,
         )
 
-    # with tab2:
-    #     df_current_slice = df_window.iloc[: current_day + 1]
-    #     render_weight_distribution_chart(weights, df_current_slice)
-
     with tab2:
         st.markdown("### Cumulative Sats-per-Dollar (SPD) Comparison")
         st.info(
@@ -211,15 +210,16 @@ def render_performance(
         st.markdown("---")
         render_comparison_summary(metrics, dynamic_perf, uniform_perf)
 
-    # with tab3:
-    #     render_purchasing_calendar(df_current, dynamic_perf, weights, current_day)
-
     with tab3:
         render_risk_metrics_tab(dynamic_perf, uniform_perf)
 
+    with tab4:
+        render_purchasing_calendar(
+            df_window, dynamic_perf, weights, current_day, total_budget=budget
+        )
+
     st.markdown("<h3>Performance Metrics</h3>", unsafe_allow_html=True)
     st.dataframe(pd.DataFrame(metrics_data), hide_index=True)
-    # st.markdown("---")
 
 
 def render_risk_metrics_tab(dynamic_perf, uniform_perf):
@@ -266,9 +266,6 @@ def render_risk_metrics_tab(dynamic_perf, uniform_perf):
     st.markdown("### 📋 Strategy Comparison Table")
     comparison_df = compare_strategies(dynamic_perf, uniform_perf)
 
-    # FIX: Use Streamlit's format parameter to prevent the FutureWarning
-    # This applies the specified format to all numeric columns for display
-    # purposes without changing the underlying data types.
     st.dataframe(
         comparison_df.style.format("{:.2f}", na_rep=""),
     )
@@ -343,13 +340,21 @@ def render_risk_metrics_tab(dynamic_perf, uniform_perf):
         )
 
 
-def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
+def render_purchasing_calendar(
+    df_current, dynamic_perf, weights, current_day, total_budget
+):
     """
-    Render a calendar-style view of the purchasing schedule showing past days and current day only.
-    Shows BTC price, buy indicators, and amount purchased for each day.
+    Render a calendar-style view of the purchasing schedule showing past days and future planned DCA.
+    Shows BTC price, buy indicators, and amount purchased/planned for each day.
+
+    Args:
+        df_current: DataFrame with price data
+        dynamic_perf: Performance data up to current day
+        weights: Weight array for signal strength
+        current_day: Current day index (0-based)
+        total_budget: Total budget for the investment period
     """
     current_data = dynamic_perf.iloc[: current_day + 1].copy()
-
     if current_data.empty:
         st.info("No purchasing data available for the selected time period.")
         return
@@ -359,23 +364,38 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
     except Exception as e:
         st.error(f"Error constructing features: {e}")
         return
+
     st.markdown("---")
     st.markdown("### 📅 Daily Purchasing Schedule")
     st.markdown("*Daily investment plan details and analysis*")
 
     avg_weight = weights.mean() if len(weights) > 0 else 0
 
-    start_date = current_data.iloc[0]["Date"]
-    end_date = current_data.iloc[-1]["Date"]
+    # Calculate remaining budget and days for future DCA
+    total_spent = current_data["Amount_Spent"].sum()
+    remaining_budget = total_budget - total_spent
+
+    total_days = len(df_current)
+    remaining_days = total_days - current_day - 1
+    future_dca_amount = remaining_budget / remaining_days if remaining_days > 0 else 0
+
+    start_date = df_current.index[0]
+    end_date = start_date + pd.DateOffset(total_days - 1)
 
     calendar_container = st.container()
 
     with calendar_container:
-        current_data["YearMonth"] = current_data["Date"].dt.to_period("M")
+        # Create a combined view: historical + future
+        all_dates = pd.date_range(start=start_date, end=end_date, freq="D")
 
-        for period in sorted(current_data["YearMonth"].unique(), reverse=True):
-            month_data = current_data[current_data["YearMonth"] == period]
-            month_start = month_data.iloc[0]["Date"]
+        # Group by month
+        date_df = pd.DataFrame({"Date": all_dates})
+
+        date_df["YearMonth"] = pd.to_datetime(date_df["Date"]).dt.to_period("M")
+        for period in sorted(date_df["YearMonth"].unique()):
+            month_dates = date_df[date_df["YearMonth"] == period]["Date"]
+            month_start = month_dates.iloc[0]
+
             with st.expander(month_start.strftime("%B %Y")):
                 st.markdown(f"### {month_start.strftime('%B %Y')}")
 
@@ -409,17 +429,17 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
                                 day_num = cell_num - first_weekday + 1
                                 current_date = first_day.replace(day=day_num)
 
-                                day_data = month_data[
-                                    month_data["Date"].dt.date == current_date.date()
+                                # Check if this date is in our historical data
+                                day_data = current_data[
+                                    current_data["Date"].dt.date == current_date.date()
                                 ]
 
                                 if not day_data.empty:
+                                    # Historical purchase
                                     day_info = day_data.iloc[-1]
-
                                     price = day_info["Price"]
                                     amount_spent = day_info["Amount_Spent"]
                                     weight = day_info["Weight"]
-
                                     signal_style = _get_signal_style(weight, avg_weight)
 
                                     day_style = f"""
@@ -432,22 +452,52 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
                                         text-align: center;
                                         min-height: 80px;
                                     ">
-                                        <div style="font-weight: bold; font-size: 14px;">
+                                        <div style="font-weight: bold; color: #161B22; font-size: 14px;">
                                             {day_num}
                                         </div>
                                         <div style="font-size: 10px; color: {signal_style['color']}; margin: 2px 0;">
                                             {signal_style['emoji']} {signal_style['text']}
                                         </div>
-                                        <div style="font-size: 9px; margin: 2px 0;">
-                                            <strong>${price:,.0f}</strong>
-                                        </div>
-                                        <div style="font-size: 8px; color: #666;">
-                                            ${amount_spent:.0f}
+                                        <div style="font-size: 20px; color: #161B22; margin: 2px 0;">
+                                            <strong>${amount_spent:.0f}</strong>
                                         </div>
                                     </div>
                                     """
                                     st.markdown(day_style, unsafe_allow_html=True)
+                                elif (
+                                    current_date.date() > datetime.now().date()
+                                    and current_date <= end_date
+                                ):
+                                    # Future planned DCA
+                                    st.markdown(
+                                        f"""
+                                    <div style="
+                                        border: 2px dashed #9CA3AF;
+                                        border-radius: 8px;
+                                        padding: 8px;
+                                        margin: 2px;
+                                        background-color: rgba(156,163,175,0.1);
+                                        text-align: center;
+                                        min-height: 80px;
+                                    ">
+                                        <div style="font-weight: bold; color: #fff; font-size: 14px;">
+                                            {day_num}
+                                        </div>
+                                        <div style="font-size: 16px; color: #6B7280; margin: 2px 0;">
+                                            ⏳
+                                        </div>
+                                        <div style="font-size: 16px; color: #fff; margin: 2px 0;">
+                                            <strong>${future_dca_amount:.0f}</strong>
+                                        </div>
+                                        <div style="font-size: 9px; color: #fff; margin: 2px 0;">
+                                            Planned DCA
+                                        </div>
+                                    </div>
+                                    """,
+                                        unsafe_allow_html=True,
+                                    )
                                 else:
+                                    # Past day with no purchase or outside window
                                     if current_date.date() <= datetime.now().date():
                                         st.markdown(
                                             f"""
@@ -460,10 +510,10 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
                                             text-align: center;
                                             min-height: 80px;
                                         ">
-                                            <div style="font-weight: bold; font-size: 14px;">
+                                            <div style="font-weight: bold; color: #161B22; font-size: 14px;">
                                                 {day_num}
                                             </div>
-                                            <div style="font-size: 10px; color: #999; margin: 2px 0;">
+                                            <div style="font-size: 10px; color: #F7931A; margin: 2px 0;">
                                                 No Purchase
                                             </div>
                                         </div>
@@ -476,7 +526,7 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
                                 st.markdown("")
 
         st.markdown("#### Legend")
-        legend_cols = st.columns(5)
+        legend_cols = st.columns(6)
         with legend_cols[0]:
             st.markdown(
                 "🟢 **Strong Buy**<br/>Price significantly below trend",
@@ -498,3 +548,7 @@ def render_purchasing_calendar(df_current, dynamic_perf, weights, current_day):
             )
         with legend_cols[4]:
             st.markdown("⚪ **Normal**<br/>Standard allocation", unsafe_allow_html=True)
+        with legend_cols[5]:
+            st.markdown(
+                "⏳ **Planned**<br/>Future DCA allocation", unsafe_allow_html=True
+            )
