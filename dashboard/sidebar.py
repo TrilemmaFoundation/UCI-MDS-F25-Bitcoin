@@ -17,7 +17,7 @@ def render_sidebar():
     if st.user.get("email"):
         logged_in = True
         user_info = get_user_info_by_email(st.user.get("email"))
-        st.session_state.user_info = user_info
+        st.session_state.user_info = user_info if user_info else {}
 
     with st.sidebar:
         # Logo and branding
@@ -29,14 +29,20 @@ def render_sidebar():
         st.markdown("### Investment Parameters")
         modal()
 
+        # Set default values
         default_budg_val = 1000
         default_invest_window = 12
         default_boost_val = 1.25
 
-        if logged_in:
-            default_budg_val = int(user_info["budget"])
-            default_invest_window = int(user_info["investment_period"])
-            default_boost_val = float(user_info["boost_factor"])
+        # Override with user values if logged in and user_info exists
+        if logged_in and user_info:
+            try:
+                default_budg_val = int(user_info.get("budget", 1000))
+                default_invest_window = int(user_info.get("investment_period", 12))
+                default_boost_val = float(user_info.get("boost_factor", 1.25))
+            except (ValueError, TypeError, KeyError):
+                # If any conversion fails, keep defaults
+                pass
 
         budget = st.number_input(
             "Total Budget (USD)",
