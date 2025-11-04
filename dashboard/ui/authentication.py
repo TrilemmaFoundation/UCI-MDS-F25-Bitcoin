@@ -28,6 +28,7 @@ def authenticate():
                 "start_date": TODAY.strftime("%Y-%m-%d"),
                 "investment_period": 12,
                 "boost_factor": 1.25,
+                "email_opted_in": 0,
             }
             add_user_info_to_sheet(to_add)
 
