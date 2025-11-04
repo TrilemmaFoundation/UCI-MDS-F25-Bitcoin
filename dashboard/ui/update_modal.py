@@ -14,7 +14,7 @@ def modal():
             budget = st.number_input("What's your budget?", value=1000, step=100)
             start_date = st.date_input(
                 "Start date",
-                value=TODAY - pd.DateOffset(months=6),
+                value=TODAY,
             )
             investment_period = st.number_input("Investment window (months)", value=12)
             boost_factor = st.slider(
