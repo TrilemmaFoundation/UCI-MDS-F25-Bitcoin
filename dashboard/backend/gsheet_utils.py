@@ -99,7 +99,7 @@ def add_user_info_to_sheet(user_info: dict):
     ]
 
     worksheet.insert_row(master_list, first_blank_row())
-    print("row added successfully!")
+    print(f"added row to spreadsheet: {master_list}")
 
 
 def get_user_info_by_email(user_email: str):
