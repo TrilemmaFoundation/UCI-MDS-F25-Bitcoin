@@ -8,3 +8,4 @@ authlib
 gspread
 oauth2client
 scipy
+textblob
