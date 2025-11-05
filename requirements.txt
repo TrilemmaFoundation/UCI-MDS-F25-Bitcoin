@@ -9,3 +9,4 @@ gspread
 oauth2client
 scipy
 textblob
+beautifulsoup4
