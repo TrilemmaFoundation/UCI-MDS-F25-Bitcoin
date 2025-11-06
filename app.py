@@ -25,6 +25,7 @@ pg = st.navigation(
         "dashboard/BTC_Purchase_Indicators.py",
         "dashboard/Email_Updates.py",
         "dashboard/About.py",
+        "dashboard/Disclaimer.py",
     ]
 )
 pg.run()
