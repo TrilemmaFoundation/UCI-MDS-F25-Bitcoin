@@ -3,7 +3,7 @@ from datetime import datetime
 
 def daily_btc_purchase_email(amount: str) -> str:
     """
-    Return a mobile-friendly HTML email showing the suggested Bitcoin purchase amount.
+    Return a mobile-friendly HTML email showing the suggested Bitcoin accumulation amount.
 
     Args:
         amount: A string representing the dollar amount (e.g., "45.23").
@@ -20,7 +20,7 @@ def daily_btc_purchase_email(amount: str) -> str:
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Today's Bitcoin Purchase Suggestion</title>
+  <title>Today's Bitcoin Accumulation/title>
   <style>
     body,table,td,a{{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}}
     table,td{{mso-table-lspace:0pt;mso-table-rspace:0pt;}}
@@ -53,17 +53,17 @@ def daily_btc_purchase_email(amount: str) -> str:
         <table class="email-content" role="presentation" cellpadding="0" cellspacing="0" width="100%">
           <tr>
             <td class="header">
-              <div class="logo">Daily BTC Purchases</div>
-              <div style="font-size:13px;margin-top:6px;opacity:0.9;">Your daily suggested Bitcoin buy amount</div>
+              <div class="logo">Daily BTC Accumulation</div>
+              <div style="font-size:13px;margin-top:6px;opacity:0.9;">Your daily Bitcoin amount</div>
             </td>
           </tr>
           <tr>
             <td class="content">
-              <p class="title">Today's Suggested Purchase</p>
+              <p class="title">Today's Accumulation</p>
               <div class="amount-box">${amt}</div>
               <p class="note">
-                This is your recommended Bitcoin purchase amount for today based on your plan.
-                Prices and market sentiment are monitored daily to help you stay consistent with your DCA strategy.
+                This is a Bitcoin accumulation amount for today.
+                Prices and market sentiment are monitored daily to help you stay consistent with your strategy.
               </p>
               <br>
             <a href="https://bitcoin-accumulation-dashboard.streamlit.app/" class="button" target="_blank" rel="noopener">Go to your dashboard</a>

@@ -137,7 +137,7 @@ def render_sidebar():
                     """
                 **Dynamic Buy-The-Dip Approach**
                 
-                This strategy intelligently adjusts daily Bitcoin purchases based on:
+                This strategy intelligently adjusts daily Bitcoin accumulation based on:
                 
                 🎯 **Key Features:**
                 - 📉 Detects when price drops below 200-day MA

@@ -177,7 +177,7 @@ def send_email_to_user(user_email, amount_to_invest):
     # TODO: Implement actual email sending logic here
     # This would use your preferred email service (SendGrid, AWS SES, etc.)
     send_email(
-        subject="Daily BTC Purchase", body=email_html, email_recipient=user_email
+        subject="Daily BTC Accumulation", body=email_html, email_recipient=user_email
     )
     print(f"sent email to {user_email} with amount ${amount_str}")
     print(f"Email HTML length: {len(email_html)} characters")

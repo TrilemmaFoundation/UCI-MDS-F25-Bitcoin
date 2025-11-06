@@ -21,7 +21,7 @@ def welcome_email(name: str) -> str:
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Welcome — Daily BTC Purchases</title>
+  <title>Welcome — Daily BTC Accumulation</title>
   <style>
     /* Basic reset */
     body,table,td,a{{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}}
@@ -63,7 +63,7 @@ def welcome_email(name: str) -> str:
 </head>
 <body>
   <!-- Preheader (hidden preview text) -->
-  <div class="preheader">Welcome to daily Bitcoin purchases — a simple, automated way to dollar-cost-average into BTC.</div>
+  <div class="preheader">Welcome to daily Bitcoin accumulation — a simple, automated way to get into BTC.</div>
 
   <table class="email-wrapper" role="presentation" cellpadding="0" cellspacing="0" width="100%">
     <tr>
@@ -73,7 +73,7 @@ def welcome_email(name: str) -> str:
           <!-- Header -->
           <tr>
             <td class="header">
-              <div class="logo">Daily BTC Purchases</div>
+              <div class="logo">Daily BTC Accumulation</div>
               <div style="font-size:13px;margin-top:6px;opacity:0.9;">Simple daily updates for your Bitcoin buying plan</div>
             </td>
           </tr>
@@ -90,7 +90,7 @@ def welcome_email(name: str) -> str:
               <div class="card" role="note" aria-label="What to expect">
                 <strong>What to expect:</strong>
                 <ul style="margin:10px 0 0 18px;padding:0;color:#0b1220;">
-                  <li>Daily short email with the suggested purchase action.</li>
+                  <li>Daily short email with the suggested accumulation.</li>
                 </ul>
               </div>
 
@@ -104,7 +104,7 @@ def welcome_email(name: str) -> str:
                 Welcome aboard — here's to steady, disciplined investing.
               </p>
 
-              <p style="margin:12px 0 0 0;color:#334155;font-size:14px;font-weight:600;">Best,<br/>The Daily BTC Purchases Team</p>
+              <p style="margin:12px 0 0 0;color:#334155;font-size:14px;font-weight:600;">Best,<br/>The Daily BTC Accumulation Team</p>
             </td>
           </tr>
 
@@ -112,7 +112,7 @@ def welcome_email(name: str) -> str:
           <tr>
             <td class="footer">
               <div class="small">
-                You received this email because you subscribed to Daily BTC Purchases. If this wasn't you, please ignore this message or <a href="#" style="color:#0f172a;text-decoration:underline;">contact support</a>.
+                You received this email because you subscribed to Daily BTC Accumulation. If this wasn't you, please ignore this message or <a href="#" style="color:#0f172a;text-decoration:underline;">contact support</a>.
                 <br/><br/>
                 <div style="margin-top:8px;color:#cbd5e1;font-size:11px;">
                   <a href="#" style="color:#94a3b8;text-decoration:none;">Unsubscribe</a> • <a href="#" style="color:#94a3b8;text-decoration:none;">Privacy policy</a>

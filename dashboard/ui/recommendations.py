@@ -22,7 +22,9 @@ def render_recommendations(dynamic_perf, df_current, weights, budget, current_da
     amount_to_invest = budget * today_weight
 
     st.markdown(f"### Action Plan for {today_date}")
-    st.metric("Recommended Investment", f"${amount_to_invest:,.2f}")
+    st.metric(
+        "Daily Accumulation $ (NOT FINANCIAL ADVICE)", f"${amount_to_invest:,.2f}"
+    )
 
     with st.expander("Analysis and Details"):
         # --- Signal Analysis ---
@@ -92,9 +94,7 @@ def render_recommendations(dynamic_perf, df_current, weights, budget, current_da
         days_elapsed = current_day + 1
         time_progress = days_elapsed / total_days
 
-        st.metric(
-            "Remaining Budget After Today's Purchase", f"${remaining_budget:,.2f}"
-        )
+        st.metric("Remaining Budget After Today", f"${remaining_budget:,.2f}")
 
         # Show two progress bars for clarity
         col_prog1, col_prog2 = st.columns(2)

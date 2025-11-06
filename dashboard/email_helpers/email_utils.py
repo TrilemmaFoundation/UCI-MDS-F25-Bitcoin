@@ -17,7 +17,7 @@ if not EMAIL_PASSWORD:
 
 def send_email(subject: str, body: str, email_recipient: str):
     msg = EmailMessage()
-    msg["From"] = f"Bitcoin Daily Purchase <{EMAIL_SENDER}>"
+    msg["From"] = f"Bitcoin Daily Accumulation <{EMAIL_SENDER}>"
     msg["To"] = email_recipient
     msg["Subject"] = subject
     msg.add_alternative(body, subtype="html")
