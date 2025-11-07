@@ -66,101 +66,161 @@ def get_users_opted_in_for_email():
         return []
 
 
-def calculate_user_buy_amount(user_info, df_btc, model_choice="Default Model"):
-    """
-    Calculate the buy amount for a specific user based on their preferences.
+def debug_calculate_user_buy_amount(user_info, df_btc):
+    """Calculate with detailed debug output - EXACTLY matching dashboard"""
 
-    Args:
-        user_info: Dictionary containing user preferences
-        df_btc: DataFrame with Bitcoin price data
-        model_choice: Which model to use for weight computation
+    start_date = pd.to_datetime(user_info["start_date"])
+    investment_window = user_info["investment_period"] * 30
+    budget = user_info["budget"]
 
-    Returns:
-        dict: Contains amount_to_invest, today_price, today_weight, and today_date
-    """
-    try:
-        # Parse user preferences
-        start_date = pd.to_datetime(user_info["start_date"])
-        investment_window = (
-            user_info["investment_period"] * 30
-        )  # Convert months to days
-        budget = user_info["budget"]
-        boost_alpha = user_info["boost_factor"]
+    # Calculate end date in MONTHS not days (to match dashboard)
+    end_date = start_date + pd.DateOffset(months=user_info["investment_period"])
 
-        # Create date range for this user's investment window
-        end_date = start_date + pd.DateOffset(days=investment_window - 1)
+    print(f"\n{'='*60}")
+    print(f"DEBUG: User Calculation for {user_info['user_email']}")
+    print(f"{'='*60}")
+    print(f"Start Date: {start_date}")
+    print(f"Investment Period: {user_info['investment_period']} months")
+    print(f"Investment Window: {investment_window} days (approx)")
+    print(f"End Date: {end_date}")
+    print(f"Budget: ${budget}")
+    print(f"Today: {datetime.now().date()}")
 
-        # Filter Bitcoin data for the user's window
-        df_window = df_btc[
-            (df_btc.index >= start_date) & (df_btc.index <= end_date)
-        ].copy()
+    # Match dashboard logic EXACTLY from render_controls
+    last_historical_date = df_btc[df_btc["Type"] == "Historical"].index.max()
 
-        # If we don't have enough data yet, use all available data from start_date
-        if df_window.empty:
-            df_window = df_btc[df_btc.index >= start_date].copy()
+    # Determine the actual start for historical data
+    historical_start = max(start_date, df_btc.index.min())
+    historical_end = min(end_date, last_historical_date)
 
-        if df_window.empty:
-            print(f"No data available for user {user_info['user_email']}")
-            return None
+    print(f"\nStep 1: Extract historical window")
+    print(f"  Historical start: {historical_start}")
+    print(f"  Historical end: {historical_end}")
+    print(f"  Last historical date in data: {last_historical_date}")
 
-        # Extend df_window with future dates if needed
-        last_date_in_window = df_window.index.max()
-        if end_date > last_date_in_window:
-            future_days_needed = (end_date - last_date_in_window).days
-            future_dates = pd.date_range(
-                start=last_date_in_window + pd.Timedelta(days=1),
-                periods=future_days_needed,
-                freq="D",
-            )
-            last_price = df_window["PriceUSD"].iloc[-1]
-            future_df = pd.DataFrame(
-                {
-                    "PriceUSD": [last_price] * len(future_dates),
-                    "Type": ["Future"] * len(future_dates),
-                },
-                index=future_dates,
-            )
-            df_window = pd.concat([df_window, future_df])
-            df_window = df_window[~df_window.index.duplicated(keep="last")]
-            df_window = df_window.sort_index()
+    # Extract historical data that overlaps with our window
+    if historical_start <= last_historical_date:
+        df_window = df_btc.loc[historical_start:historical_end].copy()
+    else:
+        # Entire window is in the future
+        df_window = pd.DataFrame(columns=["PriceUSD", "Type"])
+        df_window.index.name = "time"
 
-        # Compute weights
-        if model_choice == "GT-MSA-S25-Trilemma Model":
-            weights = compute_weights_gt(df_window)
+    print(f"  Initial df_window rows: {len(df_window)}")
+
+    # Step 2: Add Future Dates if Needed
+    future_needed = end_date > last_historical_date
+
+    if future_needed:
+        if start_date > last_historical_date:
+            # Entire window is in the future
+            future_start = start_date
+            print(f"\nStep 2: Entire window in future, starting from {future_start}")
         else:
-            weights = compute_weights(df_window, boost_alpha=boost_alpha)
+            # Window spans historical and future
+            future_start = last_historical_date + pd.Timedelta(days=1)
+            future_days = (end_date - future_start).days + 1
+            print(
+                f"\nStep 2: Extending {future_days} days into future from {future_start}"
+            )
 
-        # Get today's data
-        today = datetime.now().date()
-        today_pd = pd.Timestamp(today)
+        # Create future date range
+        future_dates = pd.date_range(start=future_start, end=end_date, freq="D")
 
-        # Find the closest date in our data to today
-        if today_pd in df_window.index:
-            today_data = df_window.loc[today_pd]
-            today_weight = weights.loc[today_pd]
+        # Get last known price for future projections
+        last_price = df_btc["PriceUSD"].iloc[-1]
+        print(f"  Last known price: ${last_price:.2f}")
+
+        # Create placeholder future data
+        future_df = pd.DataFrame(
+            {
+                "PriceUSD": [last_price] * len(future_dates),
+                "Type": ["Future"] * len(future_dates),
+            },
+            index=future_dates,
+        )
+
+        # Append future data to df_window
+        df_window = pd.concat([df_window, future_df])
+    else:
+        print(f"\nStep 2: No future dates needed")
+
+    print(f"\nStep 3: Final df_window")
+    print(f"  Total rows: {len(df_window)}")
+    print(f"  Date range: {df_window.index.min()} to {df_window.index.max()}")
+    print(f"  Historical rows: {len(df_window[df_window['Type'] == 'Historical'])}")
+    if "Type" in df_window.columns:
+        print(f"  Future rows: {len(df_window[df_window['Type'] == 'Future'])}")
+
+    # Step 4: Compute weights
+    print(f"\nStep 4: Computing weights...")
+    from dashboard.model.strategy_gt import compute_weights as compute_weights_gt
+
+    weights = compute_weights_gt(df_window)
+
+    print(f"  Weights computed: {len(weights)} values")
+    print(f"  Weight range: {weights.min():.6f} to {weights.max():.6f}")
+    print(f"  Weight sum: {weights.sum():.6f}")
+
+    # Step 5: Find today's position in the window
+    today = datetime.now().date()
+    today_pd = pd.Timestamp(today)
+
+    print(f"\nStep 5: Looking up today's data")
+    print(f"  Looking for date: {today_pd}")
+    print(f"  Date in df_window? {today_pd in df_window.index}")
+
+    # Match dashboard logic for finding "current_day"
+    if today_pd in df_window.index:
+        today_day_index = df_window.index.get_loc(today_pd)
+        print(f"  ✓ Found exact date at index {today_day_index}")
+    else:
+        # Find closest date to today that's in our window
+        if today_pd <= df_window.index[-1]:
+            valid_dates = df_window.index[df_window.index <= today_pd]
+            if len(valid_dates) > 0:
+                closest_date = valid_dates[-1]
+                today_day_index = df_window.index.get_loc(closest_date)
+                print(
+                    f"  ✓ Using closest date {closest_date} at index {today_day_index}"
+                )
+            else:
+                today_day_index = len(df_window) - 1
+                print(f"  ✗ Using last date at index {today_day_index}")
         else:
-            # Use the most recent data available
-            today_data = df_window.iloc[-1]
-            today_weight = weights.iloc[-1]
+            today_day_index = len(df_window) - 1
+            print(f"  ✗ Using last date at index {today_day_index}")
 
-        today_date = today_data.name.strftime("%Y-%m-%d")
-        today_price = today_data["PriceUSD"]
-        amount_to_invest = budget * today_weight
+    # Get data at the found index
+    today_data = df_window.iloc[today_day_index]
+    today_weight = weights.iloc[today_day_index]
+    today_date = today_data.name.strftime("%Y-%m-%d")
+    today_price = today_data["PriceUSD"]
+    amount_to_invest = budget * today_weight
 
-        return {
-            "amount_to_invest": amount_to_invest,
-            "today_price": today_price,
-            "today_weight": today_weight,
-            "today_date": today_date,
-            "user_email": user_info["user_email"],
-        }
+    print(f"\n{'='*60}")
+    print(f"RESULTS:")
+    print(f"{'='*60}")
+    print(f"Current Day Index: {today_day_index} of {len(df_window)-1}")
+    print(f"Today's Date: {today_date}")
+    print(f"Today's Price: ${today_price:.2f}")
+    print(f"Today's Weight: {today_weight:.10f}")
+    print(f"Budget: ${budget:.2f}")
+    print(f"Amount to Invest: ${amount_to_invest:.10f}")
+    print(f"Amount to Invest (rounded): ${amount_to_invest:.2f}")
+    print(f"{'='*60}\n")
 
-    except Exception as e:
-        print(f"Error calculating buy amount for {user_info['user_email']}: {e}")
-        return None
+    return {
+        "amount_to_invest": amount_to_invest,
+        "today_price": today_price,
+        "today_weight": today_weight,
+        "today_date": today_date,
+        "user_email": user_info["user_email"],
+        "current_day_index": today_day_index,
+    }
 
 
-def send_email_to_user(user_email, amount_to_invest):
+def send_email_to_user(user_email, amount_to_invest, current_price):
     """
     Send email to user with their recommended purchase amount.
 
@@ -172,7 +232,7 @@ def send_email_to_user(user_email, amount_to_invest):
     amount_str = f"{amount_to_invest:.2f}"
 
     # Generate email HTML
-    email_html = daily_btc_purchase_email(amount_str)
+    email_html = daily_btc_purchase_email(amount_str, current_price=current_price)
 
     # TODO: Implement actual email sending logic here
     # This would use your preferred email service (SendGrid, AWS SES, etc.)
@@ -214,19 +274,24 @@ def main():
         print(f"\nProcessing user: {user_info['user_email']}")
 
         # Calculate buy amount
-        result = calculate_user_buy_amount(user_info, df_btc)
+        result = debug_calculate_user_buy_amount(user_info, df_btc)
 
         if result is None:
             print(f"  ❌ Failed to calculate buy amount")
             error_count += 1
             continue
+        print(result)
 
         print(f"  ✓ Buy amount: ${result['amount_to_invest']:.2f}")
         print(f"  ✓ BTC Price: ${result['today_price']:.2f}")
         print(f"  ✓ Weight: {result['today_weight']:.4f}")
 
         # Send email
-        if send_email_to_user(result["user_email"], result["amount_to_invest"]):
+        if send_email_to_user(
+            result["user_email"],
+            result["amount_to_invest"],
+            current_price=f"{result['today_price']:.2f}",
+        ):
             print(f"  ✓ Email sent successfully")
             success_count += 1
         else:
