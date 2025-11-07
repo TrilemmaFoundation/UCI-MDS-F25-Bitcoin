@@ -1,7 +1,7 @@
 from datetime import datetime
 
 
-def daily_btc_purchase_email(amount: str) -> str:
+def daily_btc_purchase_email(amount: str, current_price: str) -> str:
     """
     Return a mobile-friendly HTML email showing the suggested Bitcoin accumulation amount.
 
@@ -20,7 +20,7 @@ def daily_btc_purchase_email(amount: str) -> str:
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Today's Bitcoin Accumulation/title>
+  <title>Today's Bitcoin Accumulation </title>
   <style>
     body,table,td,a{{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}}
     table,td{{mso-table-lspace:0pt;mso-table-rspace:0pt;}}
@@ -62,8 +62,8 @@ def daily_btc_purchase_email(amount: str) -> str:
               <p class="title">Today's Accumulation</p>
               <div class="amount-box">${amt}</div>
               <p class="note">
-                This is a Bitcoin accumulation amount for today.
-                Prices and market sentiment are monitored daily to help you stay consistent with your strategy.
+                This is a Bitcoin accumulation amount for today. The current bitcoin price is ${current_price}.
+                Prices are monitored daily to help you stay consistent with your strategy.
               </p>
               <br>
             <a href="https://bitcoin-accumulation-dashboard.streamlit.app/" class="button" target="_blank" rel="noopener">Go to your dashboard</a>
