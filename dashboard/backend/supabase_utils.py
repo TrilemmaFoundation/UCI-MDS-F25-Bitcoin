@@ -385,7 +385,6 @@ def initialize_database(supabase_url: str, supabase_key: str) -> DatabaseService
     """
     global _db_service_instance
     _db_service_instance = DatabaseService(supabase_url, supabase_key)
-    print(_db_service_instance)
     return _db_service_instance
 
 
@@ -409,7 +408,6 @@ def add_user_info_to_sheet(user_info: dict) -> Optional[Dict[str, Any]]:
 def get_user_info_by_email(user_email: str) -> Optional[Dict[str, Any]]:
     """Legacy function name for backwards compatibility."""
     db = get_database()
-    print("DDB", db)
     return db.get_user_info_by_email(user_email) if db else None
 
 
