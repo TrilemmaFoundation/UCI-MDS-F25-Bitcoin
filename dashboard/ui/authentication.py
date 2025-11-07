@@ -1,5 +1,8 @@
 import streamlit as st
-from dashboard.backend.gsheet_utils import add_user_info_to_sheet, does_user_exist
+
+# from dashboard.backend.gsheet_utils import add_user_info_to_sheet, does_user_exist
+from dashboard.backend.supabase_utils import add_user_info_to_sheet, does_user_exist
+
 from dashboard.config import TODAY  # Use the centralized TODAY constant
 
 

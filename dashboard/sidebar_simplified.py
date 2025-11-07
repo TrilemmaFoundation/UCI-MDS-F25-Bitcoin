@@ -1,6 +1,16 @@
 import streamlit as st
-from dashboard.backend.gsheet_utils import get_user_info_by_email
+
+# from dashboard.backend.gsheet_utils import get_user_info_by_email
+from dashboard.backend.supabase_utils import get_user_info_by_email, initialize_database
+import os
 from dashboard.ui.update_modal import modal
+
+url = os.getenv("SUPABASE_URL")
+key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+db = initialize_database(url, key)
+
+if not db.enabled:
+    print("❌ Database not enabled. Check credentials.")
 
 
 def render_sidebar():
@@ -27,7 +37,7 @@ def render_sidebar():
 
         # Investment Parameters
         st.markdown("### Investment Parameters")
-        modal()
+        modal(st.user.get("email"))
 
         # Set default values
         default_budg_val = 1000
@@ -37,11 +47,14 @@ def render_sidebar():
         # Override with user values if logged in and user_info exists
         if logged_in and user_info:
             try:
-                default_budg_val = int(user_info.get("budget", 1000))
+                print("in here holmes")
+                default_budg_val = int(float(user_info.get("budget", 1000)))
                 default_invest_window = int(user_info.get("investment_period", 12))
+                print(default_budg_val, default_invest_window)
                 default_boost_val = float(user_info.get("boost_factor", 1.25))
-            except (ValueError, TypeError, KeyError):
+            except Exception as e:
                 # If any conversion fails, keep defaults
+
                 pass
 
         budget = st.number_input(

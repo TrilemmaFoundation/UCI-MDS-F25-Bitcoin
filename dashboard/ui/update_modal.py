@@ -1,30 +1,41 @@
 import streamlit as st
-from dashboard.backend.gsheet_utils import update_user_preferences
+
+# from dashboard.backend.gsheet_utils import update_user_preferences
+from dashboard.backend.supabase_utils import (
+    update_user_preferences,
+    get_user_info_by_email,
+)
+
 import time
 import pandas as pd
 from dashboard.config import TODAY
 
 
-def modal():
-    if st.user.get("email"):
+def modal(email: str):
+    if email:
         with st.popover(
             "Update info",
         ):
             st.markdown("Save your investment info")
-            budget = st.number_input("What's your budget?", value=1000, step=100)
+            user_info = get_user_info_by_email(email)
+            budget = st.number_input(
+                "What's your budget?", value=int(float(user_info["budget"])), step=100
+            )
             start_date = st.date_input(
                 "Start date",
                 value=TODAY,
             )
-            investment_period = st.number_input("Investment window (months)", value=12)
-            boost_factor = st.slider(
-                "Update Boost Factor (α)",
-                0.5,
-                5.0,
-                1.25,
-                0.05,
-                help="Controls how aggressively to buy during dips.",
+            investment_period = st.number_input(
+                "Investment window (months)", value=int(user_info["investment_period"])
             )
+            # boost_factor = st.slider(
+            #     "Update Boost Factor (α)",
+            #     0.5,
+            #     5.0,
+            #     1.25,
+            #     0.05,
+            #     help="Controls how aggressively to buy during dips.",
+            # )
 
             save_button = st.button("Save your preferences")
 
@@ -35,7 +46,7 @@ def modal():
                     "budget": budget,
                     "start_date": date_formatted,
                     "investment_period": investment_period,
-                    "boost_factor": boost_factor,
+                    "boost_factor": 1.25,
                 }
                 update_user_preferences(saved_preferences)
                 st.toast("Your investment preferences have been saved!")

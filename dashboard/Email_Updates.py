@@ -1,7 +1,13 @@
 import streamlit as st
 from dashboard.email_helpers.email_utils import send_email
 from dashboard.email_helpers.welcome_email import welcome_email
-from dashboard.backend.gsheet_utils import (
+
+# from dashboard.backend.gsheet_utils import (
+#     is_user_already_on_email,
+#     add_user_to_email_list,
+#     remove_user_from_email_list,
+# )
+from dashboard.backend.supabase_utils import (
     is_user_already_on_email,
     add_user_to_email_list,
     remove_user_from_email_list,

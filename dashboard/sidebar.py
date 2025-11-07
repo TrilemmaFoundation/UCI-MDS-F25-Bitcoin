@@ -1,5 +1,8 @@
 import streamlit as st
-from dashboard.backend.gsheet_utils import get_user_info_by_email
+
+# from dashboard.backend.gsheet_utils import get_user_info_by_email
+from dashboard.backend.supabase_utils import get_user_info_by_email
+
 from dashboard.ui.update_modal import modal
 
 
