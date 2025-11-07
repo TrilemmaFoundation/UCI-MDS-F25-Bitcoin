@@ -12,10 +12,10 @@ from dashboard.data_loader import load_bitcoin_data
 from dashboard.model.strategy_new import compute_weights
 from dashboard.model.strategy_gt import compute_weights as compute_weights_gt
 from dashboard.simulation import simulate_accumulation
-from dashboard.backend.supabase_utils import get_database
+from dashboard.backend.supabase_utils import get_database, initialize_database
 from dashboard.email_helpers.daily_email_template import daily_btc_purchase_email
 from dashboard.email_helpers.email_utils import send_email
-
+import os
 import logging
 
 # Configure logging
@@ -23,6 +23,11 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+url = os.getenv("SUPABASE_URL", "")
+key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+
+db = initialize_database(url, key)
 
 
 def get_users_opted_in_for_email() -> List[Dict[str, Any]]:
