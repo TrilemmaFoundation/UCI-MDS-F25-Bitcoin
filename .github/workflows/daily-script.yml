@@ -29,4 +29,6 @@ jobs:
             GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
             GOOGLE_SHEETS_CLIENT_ID: ${{ secrets.GOOGLE_SHEETS_CLIENT_ID }}
             GOOGLE_SHEETS_PRIVATE_KEY_ID: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY_ID }}
+            SUPABASE_URL: ${{ secrets.GOOGLE_SHEETS_PRIVASUPABASE_URLTE_KEY_ID }}
+            SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python dashboard/email_helpers/daily_emailer.py
