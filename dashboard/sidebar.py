@@ -30,7 +30,8 @@ def render_sidebar():
 
         # Investment Parameters
         st.markdown("### Investment Parameters")
-        modal()
+        if st.user.get("email"):
+            modal(st.user.get("email"))
 
         # Set default values
         default_budg_val = 1000
