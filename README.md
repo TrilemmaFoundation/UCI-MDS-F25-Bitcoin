@@ -41,6 +41,7 @@ Here are some short bios for each team member.
 **Undergrad:** Soochow University \
 **From:** Taipei, Taiwan\
 **Favorite Hobby or Fun Fact:** I love the mountains. Hiking and camping in the wild is pure joy.
+**LinkedIn:** www.linkedin.com/in/chenghanwu-albert
 
 ### ![Qunli Liu](https://media.licdn.com/dms/image/v2/D5603AQHdy-JDhL1oFw/profile-displayphoto-scale_400_400/B56Zn6goXCJ8Ag-/0/1760844482557?e=1762387200&v=beta&t=PeSdabxLyyUbalQpUPIalsrEUdpXgw5stN9LngDnI5Q) ###
 **Name:** Qunli Liu  
