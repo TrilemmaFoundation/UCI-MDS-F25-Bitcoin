@@ -47,10 +47,8 @@ def render_sidebar():
         # Override with user values if logged in and user_info exists
         if logged_in and user_info:
             try:
-                print("in here holmes")
                 default_budg_val = int(float(user_info.get("budget", 1000)))
                 default_invest_window = int(user_info.get("investment_period", 12))
-                print(default_budg_val, default_invest_window)
                 default_boost_val = float(user_info.get("boost_factor", 1.25))
             except Exception as e:
                 # If any conversion fails, keep defaults
