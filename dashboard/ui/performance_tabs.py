@@ -382,6 +382,9 @@ def render_purchasing_calendar(
     start_date = df_current.index[0]
     end_date = start_date + pd.DateOffset(total_days - 1)
 
+    # Get current date in Pacific timezone for comparison
+    today_pacific = pd.Timestamp.now(tz="US/Pacific").normalize().date()
+
     calendar_container = st.container()
 
     with calendar_container:
@@ -465,10 +468,9 @@ def render_purchasing_calendar(
                                     """
                                     st.markdown(day_style, unsafe_allow_html=True)
                                 elif (
-                                    current_date.date() > datetime.now().date()
+                                    current_date.date() > today_pacific
                                     and current_date <= end_date
                                 ):
-                                    # Future planned DCA
                                     # Future planned DCA
                                     st.markdown(
                                         f"""
@@ -527,7 +529,7 @@ def render_purchasing_calendar(
                                     )
                                 else:
                                     # Past day with no purchase or outside window
-                                    if current_date.date() <= datetime.now().date():
+                                    if current_date.date() <= today_pacific:
                                         st.markdown(
                                             f"""
                                         <div style="
