@@ -1,9 +1,15 @@
 import streamlit as st
+import os
 
 # from dashboard.backend.gsheet_utils import get_user_info_by_email
-from dashboard.backend.supabase_utils import get_user_info_by_email
+from dashboard.backend.supabase_utils import get_user_info_by_email, initialize_database
 
 from dashboard.ui.update_modal import modal
+
+
+url = os.getenv("SUPABASE_URL")
+key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+db = initialize_database(url, key)
 
 
 def render_sidebar():
@@ -20,6 +26,7 @@ def render_sidebar():
     if st.user.get("email"):
         logged_in = True
         user_info = get_user_info_by_email(st.user.get("email"))
+        print("USER INFO", user_info)
         st.session_state.user_info = user_info if user_info else {}
 
     with st.sidebar:
@@ -41,7 +48,7 @@ def render_sidebar():
         # Override with user values if logged in and user_info exists
         if logged_in and user_info:
             try:
-                default_budg_val = int(user_info.get("budget", 1000))
+                default_budg_val = int(float(user_info.get("budget", 1000)))
                 default_invest_window = int(user_info.get("investment_period", 12))
                 default_boost_val = float(user_info.get("boost_factor", 1.25))
             except (ValueError, TypeError, KeyError):
