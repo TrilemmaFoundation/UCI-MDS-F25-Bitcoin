@@ -139,10 +139,181 @@ def fetch_sec_filings(cik, form_type="8-K", days_back=180):
         return []
 
 
+def extract_k8_post_202503(text: str):
+    """
+    - 8-K format changed starting Mar 2025 → requires new extraction logic.
+    - Handles special cases:
+        - Missing entries shown as “—” or “0” → treated as None.
+        - Aggregated historical values may appear even if current period is missing.
+        - Known special cases: 2025-10-06 and 2025-07-28 8-k reports
+    -  Detects "(in millions/billions)" and converts to absolute numeric values
+    """
+    # Convert text to lowercase for easier matching
+    t = text.lower()
+
+    # 1) Locate "btc update" (also matches btcupdate / btc updateon)
+    m = re.search(r'btc\s*update(?:\s*on)?', t)
+    block = t[m.start():] if m else t
+
+    # 2) Find six headings in order (spacing-flexible; does not rely on "in millions/billions")
+    patterns = [
+        r'btc\s*acquired',               # 0
+        r'aggregate\s*purchase\s*price', # 1
+        r'average\s*purchase\s*price',   # 2
+        r'aggregate\s*btc\s*holdings',   # 3
+        r'aggregate\s*purchase\s*price', # 4
+        r'average\s*purchase\s*price',   # 5
+    ]
+
+    pos = 0
+    ends = []  # end index of each heading within 'block'
+    units = {1: 1.0, 4: 1.0}  # used to scale to million or billion later
+
+    for idx, p in enumerate(patterns):
+        m = re.search(p, block[pos:], re.I)
+        if not m:
+            # If heading not found, use end of text as fallback
+            ends.append(len(block))
+            continue
+
+        end = pos + m.end()
+        ends.append(end)
+
+        # Check if this heading has "(in millions/billions)" nearby
+        if idx in (1, 4):
+            lookahead = block[end:end+80]
+            if re.search(r'\(\s*in\s*millions?\s*\)', lookahead, re.I):
+                units[idx] = 1e6
+            elif re.search(r'\(\s*in\s*billions?\s*\)', lookahead, re.I):
+                units[idx] = 1e9
+
+        pos = end
+
+     # 3) Numbers appear after the 6th heading
+    tail = block[ends[-1]:]
+
+    # Token rules:
+    #   - "$" → ignore
+    #   - "—" / "-" → None
+    #   - number → float (supports 0, decimals, thousand separators)
+    token = re.compile(
+        r'\$'
+        r'|[—\-–]+'
+        r'|(\d{1,3}(?:,\d{3})+|\d+\.\d+|\d+)'
+    )
+
+    vals = []
+    for m in token.finditer(tail):
+        tok = m.group(0).strip()
+
+        # Ignore "$"
+        if tok == '$':
+            continue
+
+        # Series of dashes → None
+        if all(ch in '—-– ' for ch in tok):
+            vals.append(None)
+
+        # Numeric token
+        elif m.group(1):
+            num_str = m.group(1)
+
+            # --- skip common noise: (1) (2)
+            if num_str in {"1", "2"}:
+                L = tail[max(0, m.start()-2):m.start()]
+                R = tail[m.end():m.end()+2]
+                # footnote like "(1)" or "(2)" → skip
+                if num_str in {"1","2"} and (("(" in L) or (")" in R)):
+                    continue
+
+            v = float(num_str.replace(',', ''))
+
+            # For (index 1 and 4), detect million/billion near the number
+            idx = len(vals)
+            if idx in (1, 4):
+                right = tail[m.end(): m.end()+20]
+                mu = re.search(r'(million|billion)\b', right, re.I)
+                if mu:
+                    u = mu.group(1).lower()
+                    if u.startswith('million'):
+                        v *= 1e6
+                    elif u.startswith('billion'):
+                        v *= 1e9
+                else:
+                    # If no inline unit, fallback to heading-based scale
+                    v *= units[idx]
+
+            vals.append(v)
+
+        # Stop once six numbers are collected
+        if len(vals) == 6:
+            break
+
+    # Pad to 6 values
+    while len(vals) < 6:
+        vals.append(None)
+
+    # Convert 0 → None (after scaling so 0 million stays 0 before turning into None)
+    vals = [None if (isinstance(v, (int,float)) and v == 0) else v for v in vals]
+
+    # 4) Return mapped results
+    return {
+        "btc_acquired": vals[0],
+        "purchase_usd": vals[1],
+        "average_purchase_usd": vals[2],
+        "aggregate_btc_acquired": vals[3],
+        "aggregate_purchase_usd": vals[4],
+        "aggregate_average_purchase_usd": vals[5]
+    }
+
+
+def extract_k8_pre_202503(text: str):
+    pattern = re.compile(
+        r'(?:acquired|purchased)\s+'                  # verb
+        r'(?:approximately\s+)?'                      # optional "approximately"
+        r'([\d,]+(?:\.\d+)?)\s+bitcoin(?:s)?\s+'      # X1 = BTC amount
+        r'for\s+(?:approximately\s+)?\$\s*'           # "for $" (allow optional "approximately")
+        r'([\d,]+(?:\.\d+)?)'                         # X2 = purchase amount
+        r'(?:\s*(million|billion))?'                  # optional unit
+        r'(?:\s+in\s+cash)?',                         # optional "in cash"
+        re.IGNORECASE
+    )
+
+    m = pattern.search(text)
+    if not m:
+        return {"btc_acquired": None, "purchase_usd": None}
+
+    # ---- BTC amount ----
+    x1 = float(m.group(1).replace(",", ""))
+    btc_acquired = int(x1) if x1.is_integer() else x1
+
+    # ---- USD amount ----
+    x2 = float(m.group(2).replace(",", ""))
+    unit = (m.group(3) or "").lower()
+
+    if unit.startswith("million"):
+        x2 *= 1e6
+    elif unit.startswith("billion"):
+        x2 *= 1e9
+
+    return {
+        "btc_acquired": btc_acquired,
+        "purchase_usd": x2
+    }
+
+
 def parse_filing_for_bitcoin_purchase(filing_url, filing_date):
     """
-    Parse SEC filing to extract Bitcoin purchase information
-    Returns: dict with purchase_date, btc_amount, usd_amount if found
+    Returns:
+        dict | None like:
+        {
+            "purchase_date": "YYYY-MM-DD",
+            "btc_amount": <float|int|None>,
+            "usd_amount": <float|None>,
+            "mentions_bitcoin": True
+        }
+        - For post-2025-03-31 (inclusive): result comes from "extract_k8_post_202503"
+        - For pre-2025-03-31: result comes from "extract_k8_pre_202503"
     """
     try:
         headers = {
@@ -153,71 +324,39 @@ def parse_filing_for_bitcoin_purchase(filing_url, filing_date):
         response = requests.get(filing_url, headers=headers, timeout=15)
         if response.status_code != 200:
             return None
-        
-        # Parse HTML content
+
         soup = BeautifulSoup(response.text, 'html.parser')
         text = soup.get_text().lower()
-        
+
         # Check if filing mentions Bitcoin
-        bitcoin_keywords = ["bitcoin", "btc", "digital asset", "cryptocurrency"]
-        if not any(keyword in text for keyword in bitcoin_keywords):
+        if "bitcoin" not in text.lower():
             return None
         
-        # Try to extract BTC amount
-        btc_amount = None
-        usd_amount = None
+        cutoff = datetime(2025, 3, 31)
+        fdate = datetime.strptime(filing_date, "%Y-%m-%d")
+
+        if fdate >= cutoff:
+            parsed = extract_k8_post_202503(text)
+        else:
+            parsed = extract_k8_pre_202503(text)
+
+        if not parsed:
+            return None
+
+        btc_amount = parsed.get("btc_acquired")
+        usd_amount = parsed.get("purchase_usd")
+
+        # skip non useful rows
+        # if btc_amount is None and usd_amount is None:
+        #     return None
         
-        # Pattern: "purchased approximately X bitcoin" or "X bitcoins" or "X BTC"
-        btc_patterns = [
-            r'purchased\s+(?:approximately\s+)?([\d,]+(?:\.[\d]+)?)\s+bitcoin',
-            r'([\d,]+(?:\.[\d]+)?)\s+bitcoin(?:s)?\s+(?:for|at|purchased)',
-            r'([\d,]+(?:\.[\d]+)?)\s+btc',
-            r'bitcoin.*?([\d,]+(?:\.[\d]+)?)\s+bitcoin',
-        ]
-        
-        for pattern in btc_patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                try:
-                    btc_str = match.group(1).replace(',', '')
-                    btc_amount = float(btc_str)
-                    break
-                except:
-                    continue
-        
-        # Pattern: "$X million" or "$X,XXX,XXX" for USD amount
-        usd_patterns = [
-            r'\$([\d,]+(?:\.[\d]+)?)\s+million',
-            r'\$([\d,]+(?:\.[\d]+)?)\s+billion',
-            r'purchased.*?\$([\d,]+(?:\.[\d]+)?)',
-        ]
-        
-        for pattern in usd_patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                try:
-                    usd_str = match.group(1).replace(',', '')
-                    usd_amount = float(usd_str)
-                    # Check if it says million or billion
-                    if 'million' in text[match.start():match.end()+20]:
-                        usd_amount *= 1_000_000
-                    elif 'billion' in text[match.start():match.end()+20]:
-                        usd_amount *= 1_000_000_000
-                    break
-                except:
-                    continue
-        
-        # If we found Bitcoin mentions, return the filing info
-        if btc_amount or usd_amount or any(keyword in text for keyword in bitcoin_keywords):
-            return {
+        return {
                 "purchase_date": filing_date,
                 "btc_amount": btc_amount,
                 "usd_amount": usd_amount,
                 "mentions_bitcoin": True
             }
-        
-        return None
-    
+
     except Exception as e:
         return None
 
