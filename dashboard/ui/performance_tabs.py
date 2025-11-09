@@ -469,8 +469,25 @@ def render_purchasing_calendar(
                                     and current_date <= end_date
                                 ):
                                     # Future planned DCA
+                                    # Future planned DCA
                                     st.markdown(
                                         f"""
+                                    <style>
+                                        .dca-amount-{day_num} .hidden-amount {{
+                                            opacity: 0;
+                                            transition: opacity 0.2s ease;
+                                        }}
+                                        .dca-amount-{day_num} .placeholder {{
+                                            opacity: 1;
+                                            transition: opacity 0.2s ease;
+                                        }}
+                                        .dca-amount-{day_num}:hover .hidden-amount {{
+                                            opacity: 1;
+                                        }}
+                                        .dca-amount-{day_num}:hover .placeholder {{
+                                            opacity: 0;
+                                        }}
+                                    </style>
                                     <div style="
                                         border: 2px dashed #9CA3AF;
                                         border-radius: 8px;
@@ -486,8 +503,20 @@ def render_purchasing_calendar(
                                         <div style="font-size: 16px; color: #6B7280; margin: 2px 0;">
                                             ⏳
                                         </div>
-                                        <div style="font-size: 16px; color: #fff; margin: 2px 0;">
-                                            <strong>${future_dca_amount:.0f}</strong>
+                                        <div class="dca-amount-{day_num}" style="
+                                            font-size: 16px; 
+                                            color: #fff; 
+                                            margin: 2px 0;
+                                            position: relative;
+                                            cursor: pointer;
+                                        ">
+                                            <strong class="hidden-amount">${future_dca_amount:.0f}</strong>
+                                            <span class="placeholder" style="
+                                                position: absolute;
+                                                left: 50%;
+                                                transform: translateX(-50%);
+                                                top: 0;
+                                            ">***</span>
                                         </div>
                                         <div style="font-size: 9px; color: #fff; margin: 2px 0;">
                                             Planned DCA
