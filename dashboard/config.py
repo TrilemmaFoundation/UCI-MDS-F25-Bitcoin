@@ -9,9 +9,12 @@ import os
 
 # A single, timezone-naive, normalized timestamp for "today".
 # This is the central reference point for the entire application.
-TODAY = pd.Timestamp.now().normalize()
-# The start date for fetching historical data.
+import pytz
+
+pacific = pytz.timezone("US/Pacific")
+TODAY = pd.Timestamp.now(tz="US/Pacific").normalize().tz_localize(None)
 BACKTEST_START = "2011-06-01"
+
 
 # This now clearly represents the end of REAL historical data (i.e., yesterday's close).
 # The data loaded will go up to, but not include, TODAY.
