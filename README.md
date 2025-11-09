@@ -40,7 +40,7 @@ Here are some short bios for each team member.
 **Name:** Albert Wu\
 **Undergrad:** Soochow University \
 **From:** Taipei, Taiwan\
-**Favorite Hobby or Fun Fact:** I love the mountains. Hiking and camping in the wild is pure joy.
+**Favorite Hobby or Fun Fact:** I love the mountains. Hiking and camping in the wild is pure joy.\
 **LinkedIn:** www.linkedin.com/in/chenghanwu-albert
 
 ---
