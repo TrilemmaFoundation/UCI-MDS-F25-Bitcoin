@@ -158,13 +158,14 @@ def render_performance(
         ((dynamic_spd - uniform_spd) / uniform_spd * 100) if uniform_spd > 0 else 0
     )
     current_date = str(df_window.index[current_day] - pd.DateOffset(days=1))[:10]
+
     metrics_data = {
         "Metric": [
             f"{current_date} BTC Price",
             "Total BTC (Dynamic)",
             "Portfolio Value",
             "Profit / Loss",
-            "SPD Performance",
+            "SPD (Satoshis Per Dollar) Performance",
         ],
         "Value": [
             f"${current_price:,.0f}",
@@ -219,7 +220,43 @@ def render_performance(
         )
 
     st.markdown("<h3>Performance Metrics</h3>", unsafe_allow_html=True)
-    st.dataframe(pd.DataFrame(metrics_data), hide_index=True)
+
+    metrics_df = pd.DataFrame(metrics_data)
+    st.dataframe(
+        metrics_df,
+        hide_index=True,
+        column_config={
+            "Metric": st.column_config.TextColumn(
+                "Metric",
+                help="Key performance indicators for your Bitcoin investment strategy",
+                width="medium",
+            ),
+            "Value": st.column_config.TextColumn(
+                "Value", help="Current values and holdings", width="medium"
+            ),
+            "Change / Comparison": st.column_config.TextColumn(
+                "Change / Comparison",
+                help="Performance comparison against uniform dollar-cost averaging (DCA) strategy. Positive percentages indicate the dynamic strategy is outperforming uniform DCA by accumulating more Bitcoin per dollar spent.",
+                width="medium",
+            ),
+        },
+        width="stretch",
+    )
+
+    # Add additional explanation for SPD
+    with st.expander("ℹ️ What is SPD (Satoshis Per Dollar)?"):
+        st.markdown(
+            """
+            **Satoshis Per Dollar (SPD)** measures the efficiency of your Bitcoin accumulation strategy.
+            
+            - **What it measures**: How many satoshis (the smallest unit of Bitcoin, 0.00000001 BTC) you acquire for each dollar invested
+            - **Why it matters**: Higher SPD means you're getting more Bitcoin for your money
+            - **How it works**: The dynamic strategy adjusts investment amounts based on market conditions, buying more when prices are favorable
+            - **Comparison**: The percentage shows how much more efficient the dynamic strategy is compared to uniform DCA (equal daily investments)
+            
+            *Example*: If SPD is +15% vs DCA, you're accumulating 15% more Bitcoin for the same budget using the dynamic strategy.
+            """
+        )
 
 
 def render_risk_metrics_tab(dynamic_perf, uniform_perf):
@@ -266,9 +303,7 @@ def render_risk_metrics_tab(dynamic_perf, uniform_perf):
     st.markdown("### 📋 Strategy Comparison Table")
     comparison_df = compare_strategies(dynamic_perf, uniform_perf)
 
-    st.dataframe(
-        comparison_df.style.format("{:.2f}", na_rep=""),
-    )
+    st.dataframe(comparison_df.style.format("{:.2f}", na_rep=""), width="stretch")
 
     st.markdown("### 📈 Risk-Return Profile")
 
