@@ -22,6 +22,7 @@ from dashboard.email_helpers.daily_email_template import daily_btc_purchase_emai
 from dashboard.email_helpers.buy_btc_confirmation import (
     make_btc_purchase_confirmation_email,
 )
+from dashboard.email_helpers.tried_buy_and_failed import make_btc_purchase_failed_email
 from dashboard.email_helpers.email_utils import send_email
 from dashboard.wallet_integration.coinbase import (
     execute_purchase_for_user,
@@ -422,6 +423,14 @@ def main():
                         email_recipient=user_email,
                     )
                 else:
+                    failed_html = make_btc_purchase_failed_email(
+                        result["amount_to_invest"]
+                    )
+                    send_email(
+                        subject="BTC Purchase failed",
+                        body=failed_html,
+                        email_recipient=user_email,
+                    )
                     logger.error(f"  ❌ Purchase execution failed")
             else:
                 logger.info(f"  ℹ User not authorized for automatic purchases")
