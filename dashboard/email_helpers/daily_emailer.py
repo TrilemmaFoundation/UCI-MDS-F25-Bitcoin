@@ -15,6 +15,11 @@ from dashboard.simulation import simulate_accumulation
 from dashboard.backend.supabase_utils import get_database, initialize_database
 from dashboard.email_helpers.daily_email_template import daily_btc_purchase_email
 from dashboard.email_helpers.email_utils import send_email
+from dashboard.wallet_integration.coinbase import (
+    execute_purchase_for_user,
+    AUTHORIZED_EMAIL,
+)
+
 import os
 import logging
 
@@ -328,6 +333,7 @@ def main():
     # Process each user
     success_count = 0
     error_count = 0
+    purchase_count = 0
     results = []
 
     for user_info in users:
@@ -335,7 +341,6 @@ def main():
         logger.info(f"\n{'-'*50}")
         logger.info(f"Processing user: {user_email}")
         logger.info(f"{'-'*50}")
-
         try:
             # Calculate buy amount
             result = debug_calculate_user_buy_amount(user_info, df_btc)
@@ -356,6 +361,27 @@ def main():
             logger.info(f"  ✓ BTC Price: ${result['today_price']:.2f}")
             logger.info(f"  ✓ Weight: {result['today_weight']:.4f}")
 
+            # Execute purchase if this is the authorized user
+            purchase_executed = False
+            if user_email == AUTHORIZED_EMAIL:
+                logger.info(f"  → Executing Coinbase purchase for authorized user...")
+
+                # Set dry_run=True for testing, False for real purchases
+                purchase_success = execute_purchase_for_user(
+                    user_email,
+                    result["amount_to_invest"],
+                    dry_run=False,  # Change to True for testing
+                )
+
+                if purchase_success:
+                    logger.info(f"  ✓ Purchase executed successfully")
+                    purchase_executed = True
+                    purchase_count += 1
+                else:
+                    logger.error(f"  ❌ Purchase execution failed")
+            else:
+                logger.info(f"  ℹ User not authorized for automatic purchases")
+
             # Send email
             email_sent = send_email_to_user(
                 result["user_email"],
@@ -372,6 +398,7 @@ def main():
                         "status": "success",
                         "amount": result["amount_to_invest"],
                         "price": result["today_price"],
+                        "purchase_executed": purchase_executed,
                     }
                 )
             else:
@@ -382,6 +409,7 @@ def main():
                         "user": user_email,
                         "status": "email_failed",
                         "error": "Email sending failed",
+                        "purchase_executed": purchase_executed,
                     }
                 )
 
@@ -404,7 +432,8 @@ def main():
     logger.info(f"Duration: {duration:.2f} seconds")
     logger.info(f"")
     logger.info(f"Total users processed: {len(users)}")
-    logger.info(f"✓ Successful:          {success_count}")
+    logger.info(f"✓ Successful emails:   {success_count}")
+    logger.info(f"✓ Purchases executed:  {purchase_count}")
     logger.info(f"✗ Errors:              {error_count}")
     logger.info(
         f"Success rate:          {(success_count/len(users)*100):.1f}%"
