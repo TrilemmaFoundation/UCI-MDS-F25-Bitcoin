@@ -8,7 +8,7 @@ from dashboard.backend.supabase_utils import (
 
 import time
 import pandas as pd
-from dashboard.config import TODAY
+from dashboard.config import get_today
 
 
 def modal(email: str):
@@ -23,7 +23,7 @@ def modal(email: str):
             )
             start_date = st.date_input(
                 "Start date",
-                value=TODAY,
+                value=get_today(),
             )
             investment_period = st.number_input(
                 "Investment window (months)", value=int(user_info["investment_period"])

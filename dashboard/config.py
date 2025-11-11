@@ -2,30 +2,32 @@
 from datetime import datetime
 import pandas as pd
 import os
+import pytz
 
 # ╔════════════════════════════════════════════════════════╗
 # ║  Configuration Constants: Single Source of Truth       ║
 # ╚════════════════════════════════════════════════════════╝
 
-# A single, timezone-naive, normalized timestamp for "today".
-# This is the central reference point for the entire application.
-import pytz
 
-pacific = pytz.timezone("US/Pacific")
-TODAY = pd.Timestamp.now(tz="US/Pacific").normalize().tz_localize(None)
+def get_today():
+    """Get current date in Pacific timezone, normalized and timezone-naive."""
+    pacific = pytz.timezone("US/Pacific")
+    return pd.Timestamp.now(tz="US/Pacific").normalize().tz_localize(None)
+
+
 BACKTEST_START = "2011-06-01"
 
 
-# This now clearly represents the end of REAL historical data (i.e., yesterday's close).
-# The data loaded will go up to, but not include, TODAY.
-HISTORICAL_END = TODAY - pd.DateOffset(days=1)
+# Helper functions for date calculations
+def get_historical_end():
+    """Get the end of historical data (yesterday's close)."""
+    return get_today() - pd.DateOffset(days=1)
 
-# New constant for future projection, starting from tomorrow.
-MAX_FORECAST_DAYS = 365 * 2  # Project up to 2 years into the future
 
 # --- Strategy & Framework Constants ---
 PURCHASE_FREQ = "Daily"
 MIN_WEIGHT = 1e-5
+MAX_FORECAST_DAYS = 365 * 2
 
 PURCHASE_FREQ_TO_OFFSET = {
     "Daily": "1D",

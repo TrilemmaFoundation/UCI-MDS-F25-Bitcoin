@@ -11,7 +11,7 @@ from dashboard.ui.charts import (
     render_strategy_comparison_chart,
 )
 
-from dashboard.config import TODAY
+from dashboard.config import get_today
 
 from dashboard.model.strategy_new import construct_features
 from dashboard.analytics.portfolio_metrics import PortfolioAnalyzer, compare_strategies
@@ -161,13 +161,36 @@ def render_performance(
     )
     current_date = df_window.index[current_day]
 
+    # --- SPD Percentile Calculation ---
+    historical_perf = dynamic_perf.iloc[: current_day + 1]
+    if not historical_perf.empty:
+        # Calculate theoretical best and worst SPD
+        # Best case: buy all at the lowest price in the period
+        # Worst case: buy all at the highest price in the period
+        prices = df_window.iloc[: current_day + 1]["PriceUSD"]
+
+        best_spd = (1e8 / prices.min()) * (current_day + 1)  # All buys at lowest price
+        worst_spd = (1e8 / prices.max()) * (
+            current_day + 1
+        )  # All buys at highest price
+        current_spd = historical_perf.iloc[-1]["Cumulative_SPD"]
+
+        # Avoid division by zero
+        if (best_spd - worst_spd) == 0:
+            spd_percentile = 100.0
+        else:
+            spd_percentile = ((current_spd - worst_spd) / (best_spd - worst_spd)) * 100
+    else:
+        spd_percentile = 0.0  # Default value if there's no performance data
+
     metrics_data = {
         "Metric": [
-            f"{current_date.strftime("%Y-%m-%d")} BTC Price",
+            f"{current_date.strftime('%Y-%m-%d')} BTC Price",
             "Total BTC (Dynamic)",
             "Portfolio Value",
             "Profit / Loss",
-            "SPD (Satoshis Per Dollar) Performance",
+            "SPD (Satoshis Per Dollar)",
+            "SPD Percentile",
         ],
         "Value": [
             f"${current_price:,.0f}",
@@ -175,6 +198,7 @@ def render_performance(
             f"${dynamic_perf.iloc[-1]['Portfolio_Value']:,.2f}",
             f"${dynamic_perf.iloc[-1]['PnL']:,.2f}",
             f"{dynamic_spd:,.0f}",
+            f"{spd_percentile:.1f}%",
         ],
         "Change / Comparison": [
             "",
@@ -182,6 +206,7 @@ def render_performance(
             "",
             f"{dynamic_pnl_pct:+.2f}%",
             f"+{spd_advantage:.2f}% vs DCA",
+            "Ranking vs historical performance",
         ],
     }
 
@@ -246,15 +271,14 @@ def render_performance(
     )
 
     # Add additional explanation for SPD
-    with st.expander("ℹ️ What is SPD (Satoshis Per Dollar)?"):
+    with st.expander("ℹ️ What are SPD (Satoshis Per Dollar) and SPD Percentile?"):
         st.markdown(
             """
             **Satoshis Per Dollar (SPD)** measures the efficiency of your Bitcoin accumulation strategy.
             
-            - **What it measures**: How many satoshis (the smallest unit of Bitcoin, 0.00000001 BTC) you acquire for each dollar invested
-            - **Why it matters**: Higher SPD means you're getting more Bitcoin for your money
-            - **How it works**: The dynamic strategy adjusts investment amounts based on market conditions, buying more when prices are favorable
-            - **Comparison**: The percentage shows how much more efficient the dynamic strategy is compared to uniform DCA (equal daily investments)
+            - **What it measures**: How many satoshis (the smallest unit of Bitcoin, 0.00000001 BTC) you acquire for each dollar invested.
+            - **Why it matters**: Higher SPD means you're getting more Bitcoin for your money.
+            - **SPD Percentile**: This shows how your current SPD ranks against its own historical performance within the selected timeframe. A value of 100% means your current purchasing efficiency is the best it has been.
             
             *Example*: If SPD is +15% vs DCA, you're accumulating 15% more Bitcoin for the same budget using the dynamic strategy.
             """
@@ -420,7 +444,7 @@ def render_purchasing_calendar(
     end_date = start_date + pd.DateOffset(total_days - 1)
 
     # Get current date in Pacific timezone for comparison
-    today_pacific = TODAY
+    today_pacific = get_today()
 
     calendar_container = st.container()
 

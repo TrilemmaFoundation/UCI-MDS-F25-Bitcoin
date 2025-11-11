@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import requests
 from io import StringIO
-from dashboard.config import BACKTEST_START, TODAY, MAX_FORECAST_DAYS
+from dashboard.config import BACKTEST_START, get_today, MAX_FORECAST_DAYS
 
 
 def get_current_btc_price():
@@ -103,7 +103,7 @@ def load_bitcoin_data():
 
         # --- Step 2: Separate Historical Data (ends yesterday) ---
         historical_df = all_data.loc[
-            BACKTEST_START : TODAY - pd.DateOffset(days=1)
+            BACKTEST_START : get_today() - pd.DateOffset(days=1)
         ].copy()
         historical_df["Type"] = "Historical"
         print(
@@ -120,14 +120,14 @@ def load_bitcoin_data():
 
         today_df = pd.DataFrame(
             {"PriceUSD": [current_price], "Type": ["Today"]},
-            index=pd.Index([TODAY], name="time"),
+            index=pd.Index([get_today()], name="time"),
         )
         print(
-            f"Today's data point created for {TODAY} with price ${current_price:,.2f}"
+            f"Today's data point created for {get_today()} with price ${current_price:,.2f}"
         )
 
         # --- Step 4: Generate Future Data (starts tomorrow) ---
-        forecast_start_date = TODAY + pd.DateOffset(days=1)
+        forecast_start_date = get_today() + pd.DateOffset(days=1)
         # future_df = generate_future_data(
         #     start_price=current_price,
         #     start_date=forecast_start_date,
@@ -142,7 +142,7 @@ def load_bitcoin_data():
         combined_df = pd.concat([historical_df, today_df])  # , future_df])
         # Re-assign Type for clarity in charts where 'Today' is part of the historical line
         combined_df["Type"] = np.where(
-            combined_df.index > TODAY, "Forecast", "Historical"
+            combined_df.index > get_today(), "Forecast", "Historical"
         )
 
         return combined_df.dropna()
