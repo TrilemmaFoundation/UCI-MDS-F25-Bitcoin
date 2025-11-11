@@ -10,7 +10,7 @@ import logging
 from contextlib import contextmanager
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
 
@@ -136,7 +136,6 @@ class DatabaseService:
             )
 
             if response.data:
-                logger.info(f"Found user: {user_email}")
                 # Convert to match original format
                 return {
                     "user_email": response.data["user_email"],
