@@ -40,7 +40,10 @@ Here are some short bios for each team member.
 **Name:** Albert Wu\
 **Undergrad:** Soochow University \
 **From:** Taipei, Taiwan\
-**Favorite Hobby or Fun Fact:** I love the mountains. Hiking and camping in the wild is pure joy.
+**Favorite Hobby or Fun Fact:** I love the mountains. Hiking and camping in the wild is pure joy.\
+**LinkedIn:** www.linkedin.com/in/chenghanwu-albert
+
+---
 
 ### ![Qunli Liu](https://media.licdn.com/dms/image/v2/D5603AQHdy-JDhL1oFw/profile-displayphoto-scale_400_400/B56Zn6goXCJ8Ag-/0/1760844482557?e=1762387200&v=beta&t=PeSdabxLyyUbalQpUPIalsrEUdpXgw5stN9LngDnI5Q) ###
 **Name:** Qunli Liu  
@@ -48,6 +51,8 @@ Here are some short bios for each team member.
 **From:** Taizhou, Jiangsu, China  
 **Favorite Hobby or Fun Fact:** I love singing and popping street dance! Music and movement are my way of expressing creativity beyond data science.  
 **LinkedIn:** https://www.linkedin.com/in/qunli-liu-244a5822b
+
+---
 
 ### ![Yicheng Wen`](https://github.com/TrilemmaFoundation/UCI-MDS-F25-Bitcoin/blob/yicheng/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20251018172646_251_38.jpg) ###
 **Name:** Yicheng Wen \
