@@ -12,3 +12,4 @@ textblob
 beautifulsoup4
 supabase
 coinbase-advanced-py
+cryptography
