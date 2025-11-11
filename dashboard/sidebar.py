@@ -26,7 +26,6 @@ def render_sidebar():
     if st.user.get("email"):
         logged_in = True
         user_info = get_user_info_by_email(st.user.get("email"))
-        print("USER INFO", user_info)
         st.session_state.user_info = user_info if user_info else {}
 
     with st.sidebar:
