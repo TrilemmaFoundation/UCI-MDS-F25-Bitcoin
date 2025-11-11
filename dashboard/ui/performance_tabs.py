@@ -11,6 +11,8 @@ from dashboard.ui.charts import (
     render_strategy_comparison_chart,
 )
 
+from dashboard.config import TODAY
+
 from dashboard.model.strategy_new import construct_features
 from dashboard.analytics.portfolio_metrics import PortfolioAnalyzer, compare_strategies
 
@@ -157,11 +159,11 @@ def render_performance(
     spd_advantage = (
         ((dynamic_spd - uniform_spd) / uniform_spd * 100) if uniform_spd > 0 else 0
     )
-    current_date = str(df_window.index[current_day] - pd.DateOffset(days=1))[:10]
+    current_date = df_window.index[current_day]
 
     metrics_data = {
         "Metric": [
-            f"{current_date} BTC Price",
+            f"{current_date.strftime("%Y-%m-%d")} BTC Price",
             "Total BTC (Dynamic)",
             "Portfolio Value",
             "Profit / Loss",
@@ -418,7 +420,7 @@ def render_purchasing_calendar(
     end_date = start_date + pd.DateOffset(total_days - 1)
 
     # Get current date in Pacific timezone for comparison
-    today_pacific = pd.Timestamp.now(tz="US/Pacific").normalize().date()
+    today_pacific = TODAY
 
     calendar_container = st.container()
 
@@ -503,7 +505,7 @@ def render_purchasing_calendar(
                                     """
                                     st.markdown(day_style, unsafe_allow_html=True)
                                 elif (
-                                    current_date.date() > today_pacific
+                                    current_date.date() > today_pacific.date()
                                     and current_date <= end_date
                                 ):
                                     # Future planned DCA
@@ -547,7 +549,7 @@ def render_purchasing_calendar(
                                             position: relative;
                                             cursor: pointer;
                                         ">
-                                            <strong class="hidden-amount">${future_dca_amount:.0f}</strong>
+                                            <strong class="hidden-amount">${future_dca_amount:.2f}</strong>
                                             <span class="placeholder" style="
                                                 position: absolute;
                                                 left: 50%;
@@ -563,8 +565,74 @@ def render_purchasing_calendar(
                                         unsafe_allow_html=True,
                                     )
                                 else:
-                                    # Past day with no purchase or outside window
-                                    if current_date.date() <= today_pacific:
+                                    # Determine if this is a slider's current day to today's date (future relative to slider)
+                                    slider_current_date = df_current.index[current_day]
+
+                                    if (
+                                        current_date.date() > slider_current_date.date()
+                                        and current_date <= end_date
+                                    ):
+                                        # Future planned DCA (between slider position and end of window)
+                                        st.markdown(
+                                            f"""
+                                        <style>
+                                            .dca-amount-{day_num} .hidden-amount {{
+                                                opacity: 0;
+                                                transition: opacity 0.2s ease;
+                                            }}
+                                            .dca-amount-{day_num} .placeholder {{
+                                                opacity: 1;
+                                                transition: opacity 0.2s ease;
+                                            }}
+                                            .dca-amount-{day_num}:hover .hidden-amount {{
+                                                opacity: 1;
+                                            }}
+                                            .dca-amount-{day_num}:hover .placeholder {{
+                                                opacity: 0;
+                                            }}
+                                        </style>
+                                        <div style="
+                                            border: 2px dashed #9CA3AF;
+                                            border-radius: 8px;
+                                            padding: 8px;
+                                            margin: 2px;
+                                            background-color: rgba(156,163,175,0.1);
+                                            text-align: center;
+                                            min-height: 80px;
+                                        ">
+                                            <div style="font-weight: bold; color: #fff; font-size: 14px;">
+                                                {day_num}
+                                            </div>
+                                            <div style="font-size: 16px; color: #6B7280; margin: 2px 0;">
+                                                ⏳
+                                            </div>
+                                            <div class="dca-amount-{day_num}" style="
+                                                font-size: 16px; 
+                                                color: #fff; 
+                                                margin: 2px 0;
+                                                position: relative;
+                                                cursor: pointer;
+                                            ">
+                                                <strong class="hidden-amount">${future_dca_amount:.2f}</strong>
+                                                <span class="placeholder" style="
+                                                    position: absolute;
+                                                    left: 50%;
+                                                    transform: translateX(-50%);
+                                                    top: 0;
+                                                ">***</span>
+                                            </div>
+                                            <div style="font-size: 9px; color: #fff; margin: 2px 0;">
+                                                Planned DCA
+                                            </div>
+                                        </div>
+                                        """,
+                                            unsafe_allow_html=True,
+                                        )
+                                    elif (
+                                        current_date.date()
+                                        <= slider_current_date.date()
+                                    ):
+                                        # Past day (before slider position) with no purchase
                                         st.markdown(
                                             f"""
                                         <div style="
@@ -588,6 +656,7 @@ def render_purchasing_calendar(
                                         )
                                     else:
                                         st.markdown("")
+
                             else:
                                 st.markdown("")
 
