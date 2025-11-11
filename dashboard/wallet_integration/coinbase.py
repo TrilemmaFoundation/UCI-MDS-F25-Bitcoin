@@ -14,11 +14,13 @@ logger = logging.getLogger(__name__)
 COINBASE_API_KEY = os.getenv("COINBASE_API_KEY", "")
 COINBASE_API_SECRET = os.getenv("COINBASE_API_SECRET", "")
 
+test_me = {"client": COINBASE_API_KEY, "secret": COINBASE_API_SECRET}
+
 # User whitelist - only this email can execute transactions
 AUTHORIZED_EMAIL = "smaueltown@gmail.com"
 
 
-def get_coinbase_client() -> Optional[RESTClient]:
+def get_coinbase_client(api_keys: dict) -> Optional[RESTClient]:
     """
     Initialize and return a Coinbase REST client.
 
@@ -30,21 +32,21 @@ def get_coinbase_client() -> Optional[RESTClient]:
         return None
 
     try:
-        client = RESTClient(api_key=COINBASE_API_KEY, api_secret=COINBASE_API_SECRET)
+        client = RESTClient(api_key=api_keys["client"], api_secret=api_keys["secret"])
         return client
     except Exception as e:
         logger.error(f"Failed to initialize Coinbase client: {e}", exc_info=True)
         return None
 
 
-def test_connection() -> bool:
+def test_connection(api_keys: dict) -> bool:
     """
     Test the Coinbase API connection.
 
     Returns:
         True if connection is successful, False otherwise
     """
-    client = get_coinbase_client()
+    client = get_coinbase_client(api_keys)
     if not client:
         return False
 
@@ -58,14 +60,14 @@ def test_connection() -> bool:
         return False
 
 
-def get_btc_account_info() -> Optional[Dict[str, Any]]:
+def get_btc_account_info(api_keys: dict) -> Optional[Dict[str, Any]]:
     """
     Get BTC account information.
 
     Returns:
         Dictionary with account info or None if not found
     """
-    client = get_coinbase_client()
+    client = get_coinbase_client(api_keys)
     if not client:
         return None
 
@@ -86,7 +88,7 @@ def get_btc_account_info() -> Optional[Dict[str, Any]]:
 
 
 def execute_btc_purchase(
-    user_email: str, amount_usd: float, dry_run: bool = False
+    user_email: str, amount_usd: float, api_keys: dict, dry_run: bool = False
 ) -> Dict[str, Any]:
     """
     Execute a Bitcoin purchase on Coinbase for authorized user only.
@@ -113,16 +115,16 @@ def execute_btc_purchase(
     }
 
     # Check if API credentials are configured
-    if not COINBASE_API_KEY or not COINBASE_API_SECRET:
+    if not api_keys:
         result["error"] = "Coinbase API credentials not configured"
         logger.error(result["error"])
         return result
 
     # SECURITY: Only allow authorized user
-    if user_email != AUTHORIZED_EMAIL:
-        result["error"] = f"User {user_email} is not authorized for automatic purchases"
-        logger.warning(result["error"])
-        return result
+    # if user_email != AUTHORIZED_EMAIL:
+    #     result["error"] = f"User {user_email} is not authorized for automatic purchases"
+    #     logger.warning(result["error"])
+    #     return result
 
     # Validate amount
     if amount_usd <= 0:
@@ -144,13 +146,13 @@ def execute_btc_purchase(
 
     try:
         # Initialize client
-        client = get_coinbase_client()
+        client = get_coinbase_client(api_keys)
         if not client:
             result["error"] = "Failed to initialize Coinbase client"
             return result
 
         # Verify BTC account exists
-        btc_account = get_btc_account_info()
+        btc_account = get_btc_account_info(api_keys)
         if not btc_account:
             result["error"] = "Could not find BTC account"
             return result
@@ -206,7 +208,7 @@ def execute_btc_purchase(
 
             logger.info(f"✓ {result['message']}")
             logger.info(f"  Order ID: {result['order_id']}")
-            logger.info(f"  Full response: {json.dumps(order_dict, indent=2)}")
+            # logger.info(f"  Full response: {json.dumps(order_dict, indent=2)}")
 
         else:
             result["error"] = (
@@ -223,7 +225,10 @@ def execute_btc_purchase(
 
 
 def execute_purchase_for_user(
-    user_email: str, amount_to_invest: float, dry_run: bool = False
+    user_email: str,
+    amount_to_invest: float,
+    api_keys: dict,
+    dry_run: bool = False,
 ) -> bool:
     """
     Wrapper function to execute purchase and return simple success/failure.
@@ -237,7 +242,8 @@ def execute_purchase_for_user(
     Returns:
         True if purchase succeeded, False otherwise
     """
-    result = execute_btc_purchase(user_email, amount_to_invest, dry_run)
+    print(user_email, amount_to_invest, api_keys, dry_run)
+    result = execute_btc_purchase(user_email, amount_to_invest, api_keys, dry_run)
 
     if result["success"]:
         logger.info(f"Purchase completed for {user_email}: {result['message']}")
@@ -278,7 +284,7 @@ if __name__ == "__main__":
 
     # Test connection
     print("\n[CONNECTION TEST]")
-    if test_connection():
+    if test_connection(test_me):
         print("✓ API connection successful")
     else:
         print("✗ API connection failed")
@@ -286,7 +292,7 @@ if __name__ == "__main__":
 
     # Get BTC account info
     print("\n[ACCOUNT INFO]")
-    btc_account = get_btc_account_info()
+    btc_account = get_btc_account_info(test_me)
     if btc_account:
         print(f"✓ BTC Account found")
 
@@ -295,7 +301,9 @@ if __name__ == "__main__":
 
     print("\n[TEST SCENARIOS]")
     print(f"\nTest 1: Dry run purchase")
-    result = execute_btc_purchase(test_email, test_amount, dry_run=False)
+    result = execute_btc_purchase(
+        test_email, test_amount, api_keys=test_me, dry_run=False
+    )
     print(f"Result: {result}")
 
     # print(f"\nTest 2: Unauthorized user")
