@@ -12,16 +12,41 @@ from dashboard.data_loader import load_bitcoin_data
 from dashboard.model.strategy_new import compute_weights
 from dashboard.model.strategy_gt import compute_weights as compute_weights_gt
 from dashboard.simulation import simulate_accumulation
-from dashboard.backend.supabase_utils import get_database, initialize_database
+from dashboard.backend.supabase_utils import (
+    get_database,
+    initialize_database,
+    is_user_coinbased,
+    get_full_user_info,
+)
 from dashboard.email_helpers.daily_email_template import daily_btc_purchase_email
+from dashboard.email_helpers.buy_btc_confirmation import (
+    make_btc_purchase_confirmation_email,
+)
 from dashboard.email_helpers.email_utils import send_email
 from dashboard.wallet_integration.coinbase import (
     execute_purchase_for_user,
     AUTHORIZED_EMAIL,
 )
+from dashboard.backend.cryptography_helpers import decrypt_value, get_fernet
 
 import os
 import logging
+from cryptography.fernet import Fernet
+
+
+def get_keys(user_email: str):
+    print("is user coinbased?", is_user_coinbased(user_email=user_email))
+    if is_user_coinbased(user_email=user_email):
+        user_info = get_full_user_info(user_email=user_email)
+        secret = user_info["coinbase_secret_api_key"]
+        client = user_info["coinbase_client_api_key"]
+        decrypted_secret = decrypt_value(get_fernet(), secret)
+        decrypted_client = decrypt_value(get_fernet(), client)
+        to_return = {"client": decrypted_client, "secret": decrypted_secret}
+        return to_return
+    else:
+        return False
+
 
 # Configure logging
 logging.basicConfig(
@@ -66,6 +91,8 @@ def get_users_opted_in_for_email() -> List[Dict[str, Any]]:
                 "start_date": user["start_date"],
                 "investment_period": int(user["investment_period"]),
                 "boost_factor": float(user["boost_factor"]),
+                "coinbase_client_api_key": user["coinbase_client_api_key"],
+                "coinbase_secret_api_key": user["coinbase_secret_api_key"],
             }
             formatted_users.append(user_info)
 
@@ -320,6 +347,7 @@ def main():
     logger.info("Retrieving users opted in for email...")
     try:
         users = get_users_opted_in_for_email()
+        # print(users)
     except Exception as e:
         logger.error(f"❌ Failed to retrieve users: {e}", exc_info=True)
         return
@@ -337,7 +365,11 @@ def main():
     results = []
 
     for user_info in users:
+
         user_email = user_info.get("user_email", "unknown")
+
+        # if user_email == "smaueltown@gmail.com":
+
         logger.info(f"\n{'-'*50}")
         logger.info(f"Processing user: {user_email}")
         logger.info(f"{'-'*50}")
@@ -363,13 +395,17 @@ def main():
 
             # Execute purchase if this is the authorized user
             purchase_executed = False
-            if user_email == AUTHORIZED_EMAIL:
-                logger.info(f"  → Executing Coinbase purchase for authorized user...")
+            potential_keys = get_keys(user_email=user_email)
+            # print(potential_keys)
+            if potential_keys:
+                # if user_email == AUTHORIZED_EMAIL:
+                print(f"  → Executing Coinbase purchase for authorized user...")
 
                 # Set dry_run=True for testing, False for real purchases
                 purchase_success = execute_purchase_for_user(
                     user_email,
                     result["amount_to_invest"],
+                    api_keys=potential_keys,
                     dry_run=False,  # Change to True for testing
                 )
 
@@ -377,6 +413,14 @@ def main():
                     logger.info(f"  ✓ Purchase executed successfully")
                     purchase_executed = True
                     purchase_count += 1
+                    confirmation_purchase_html = make_btc_purchase_confirmation_email(
+                        result["amount_to_invest"]
+                    )
+                    send_email(
+                        subject="BTC Purchase Confirmation",
+                        body=confirmation_purchase_html,
+                        email_recipient=user_email,
+                    )
                 else:
                     logger.error(f"  ❌ Purchase execution failed")
             else:
