@@ -436,35 +436,35 @@ def main():
                 logger.info(f"  ℹ User not authorized for automatic purchases")
 
             # Send email
-            email_sent = send_email_to_user(
-                result["user_email"],
-                result["amount_to_invest"],
-                current_price=f"{result['today_price']:.2f}",
-            )
+            # email_sent = send_email_to_user(
+            #     result["user_email"],
+            #     result["amount_to_invest"],
+            #     current_price=f"{result['today_price']:.2f}",
+            # )
 
-            if email_sent:
-                logger.info(f"  ✓ Email sent successfully to {user_email}")
-                success_count += 1
-                results.append(
-                    {
-                        "user": user_email,
-                        "status": "success",
-                        "amount": result["amount_to_invest"],
-                        "price": result["today_price"],
-                        "purchase_executed": purchase_executed,
-                    }
-                )
-            else:
-                logger.error(f"  ❌ Failed to send email to {user_email}")
-                error_count += 1
-                results.append(
-                    {
-                        "user": user_email,
-                        "status": "email_failed",
-                        "error": "Email sending failed",
-                        "purchase_executed": purchase_executed,
-                    }
-                )
+            # if email_sent:
+            #     logger.info(f"  ✓ Email sent successfully to {user_email}")
+            #     success_count += 1
+            #     results.append(
+            #         {
+            #             "user": user_email,
+            #             "status": "success",
+            #             "amount": result["amount_to_invest"],
+            #             "price": result["today_price"],
+            #             "purchase_executed": purchase_executed,
+            #         }
+            #     )
+            # else:
+            #     logger.error(f"  ❌ Failed to send email to {user_email}")
+            #     error_count += 1
+            #     results.append(
+            #         {
+            #             "user": user_email,
+            #             "status": "email_failed",
+            #             "error": "Email sending failed",
+            #             "purchase_executed": purchase_executed,
+            #         }
+            #     )
 
         except Exception as e:
             logger.error(
