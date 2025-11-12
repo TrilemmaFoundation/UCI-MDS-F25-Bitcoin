@@ -242,7 +242,7 @@ def execute_purchase_for_user(
     Returns:
         True if purchase succeeded, False otherwise
     """
-    print(user_email, amount_to_invest, api_keys, dry_run)
+    # print(user_email, amount_to_invest, api_keys, dry_run)
     result = execute_btc_purchase(user_email, amount_to_invest, api_keys, dry_run)
 
     if result["success"]:
