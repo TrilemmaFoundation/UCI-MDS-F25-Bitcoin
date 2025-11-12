@@ -27,9 +27,9 @@ def get_coinbase_client(api_keys: dict) -> Optional[RESTClient]:
     Returns:
         RESTClient instance or None if credentials are missing
     """
-    if not COINBASE_API_KEY or not COINBASE_API_SECRET:
-        logger.error("Coinbase API credentials not configured")
-        return None
+    # if not COINBASE_API_KEY or not COINBASE_API_SECRET:
+    #     logger.error("Coinbase API credentials not configured")
+    #     return None
 
     try:
         client = RESTClient(api_key=api_keys["client"], api_secret=api_keys["secret"])
