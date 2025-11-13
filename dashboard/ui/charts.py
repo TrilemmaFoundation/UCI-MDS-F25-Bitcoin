@@ -6,7 +6,7 @@ from plotly.subplots import make_subplots
 from dashboard.model.strategy_new import construct_features
 import dashboard.config as config
 from datetime import datetime
-from dashboard.config import TODAY
+from dashboard.config import get_today
 
 
 def render_price_signals_chart(df_chart_display, weights, df_window, current_day):
@@ -70,18 +70,18 @@ def render_price_signals_chart(df_chart_display, weights, df_window, current_day
     )
 
     fig.add_vline(
-        x=TODAY,
+        x=get_today(),
         line_width=2,
         line_dash="dot",
         line_color="grey",
     )
 
     fig.add_annotation(
-        x=TODAY,
+        x=get_today(),
         y=0.4,  # 1 = top of plotting area when yref='paper'
         xref="x",
         yref="paper",
-        text=f"Today ({TODAY.date()})",
+        text=f"Today ({get_today().date()})",
         showarrow=False,
         xanchor="left",  # similar to "top left" placement
         yanchor="auto",

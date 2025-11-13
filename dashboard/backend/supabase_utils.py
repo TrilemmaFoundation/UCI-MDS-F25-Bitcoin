@@ -3,6 +3,8 @@ Production-ready Supabase/PostgreSQL database service.
 Replaces Google Sheets backend with proper database operations.
 """
 
+import streamlit as st
+import os
 from supabase import create_client, Client
 from typing import Optional, Dict, Any
 from datetime import datetime
@@ -136,7 +138,6 @@ class DatabaseService:
             )
 
             if response.data:
-                logger.info(f"Found user: {user_email}")
                 # Convert to match original format
                 return {
                     "user_email": response.data["user_email"],
@@ -145,6 +146,45 @@ class DatabaseService:
                     "investment_period": str(response.data["investment_period"]),
                     "boost_factor": str(response.data["boost_factor"]),
                 }
+            else:
+                logger.info(f"No user found with email: {user_email}")
+                return None
+
+        except Exception as e:
+            self._handle_error("get_user_info_by_email", e)
+            return None
+
+    def get_full_user_info(self, user_email: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve user information by email address.
+
+        Args:
+            user_email: Email address to search for
+
+        Returns:
+            Dictionary containing user information or None if not found
+        """
+        if not self.enabled or not self.client:
+            logger.warning("Database not configured, returning default values")
+            return {
+                "user_email": user_email,
+                "budget": "1000",
+                "start_date": "2024-10-18",
+                "investment_period": "12",
+                "boost_factor": "1.25",
+            }
+
+        try:
+            response = (
+                self.client.table("users")
+                .select("*")
+                .eq("user_email", user_email)
+                .maybe_single()
+                .execute()
+            )
+
+            if response.data:
+                return response.data
             else:
                 logger.info(f"No user found with email: {user_email}")
                 return None
@@ -271,6 +311,50 @@ class DatabaseService:
             self._handle_error("add_user_to_email_list", e)
             return False
 
+    def add_coinbase_info(
+        self, user_email: str, client_api_key: str, secret_api_key: str
+    ) -> bool:
+        """
+        Opt user into automated coinbase transactions.
+
+        Args:
+            user_email: which user we want to opt in
+            client_api_key: coinbase client api key
+            secret_api_key: coinbase secret api key
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.enabled or not self.client:
+            print("db not configured")
+            logger.warning("Database not configured, skipping email list update")
+            return False
+
+        try:
+            response = (
+                self.client.table("users")
+                .update(
+                    {
+                        "coinbase_client_api_key": client_api_key,
+                        "coinbase_secret_api_key": secret_api_key,
+                        "updated_at": datetime.utcnow().isoformat(),
+                    }
+                )
+                .eq("user_email", user_email)
+                .execute()
+            )
+
+            if response.data:
+                logger.info(f"Added api keys to db for user: {user_email}")
+                return True
+            else:
+                logger.warning(f"User not found: {user_email}")
+                return False
+
+        except Exception as e:
+            self._handle_error("add_user_to_email_list", e)
+            return False
+
     def is_user_on_email_list(self, user_email: str) -> bool:
         """
         Check if user is opted into email list.
@@ -296,6 +380,39 @@ class DatabaseService:
 
             if response.data:
                 return bool(response.data.get("email_opted_in", False))
+            else:
+                logger.info(f"User not found: {user_email}")
+                return False
+
+        except Exception as e:
+            self._handle_error("is_user_on_email_list", e)
+            return False
+
+    def is_user_coinbased(self, user_email: str) -> bool:
+        """
+        Check if user is opted into coinbase list.
+
+        Args:
+            user_email: Email address to check
+
+        Returns:
+            True if user is opted in, False otherwise
+        """
+        if not self.enabled or not self.client:
+            logger.warning("Database not configured")
+            return False
+
+        try:
+            response = (
+                self.client.table("users")
+                .select("coinbase_client_api_key")
+                .eq("user_email", user_email)
+                .maybe_single()
+                .execute()
+            )
+
+            if response.data:
+                return bool(response.data.get("coinbase_client_api_key", False))
             else:
                 logger.info(f"User not found: {user_email}")
                 return False
@@ -333,6 +450,45 @@ class DatabaseService:
 
             if response.data:
                 logger.info(f"Removed user from email list: {user_email}")
+                return True
+            else:
+                logger.warning(f"User not found: {user_email}")
+                return False
+
+        except Exception as e:
+            self._handle_error("remove_user_from_email_list", e)
+            return False
+
+    def remove_user_api_keys(self, user_email: str) -> bool:
+        """
+        Opt user out of auto btc accumulation
+
+        Args:
+            user_email: Email address of user to opt out
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.enabled or not self.client:
+            logger.warning("Database not configured, skipping email list update")
+            return False
+
+        try:
+            response = (
+                self.client.table("users")
+                .update(
+                    {
+                        "coinbase_client_api_key": None,
+                        "coinbase_secret_api_key": None,
+                        "updated_at": datetime.utcnow().isoformat(),
+                    }
+                )
+                .eq("user_email", user_email)
+                .execute()
+            )
+
+            if response.data:
+                logger.info(f"Removed user's api keys': {user_email}")
                 return True
             else:
                 logger.warning(f"User not found: {user_email}")
@@ -398,6 +554,47 @@ def get_database() -> Optional[DatabaseService]:
     return _db_service_instance
 
 
+def get_supabase_credentials() -> tuple[Optional[str], Optional[str]]:
+    """
+    Retrieve Supabase credentials from environment variables.
+
+    Returns:
+        Tuple of (supabase_url, supabase_key)
+    """
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv(
+        "SUPABASE_SERVICE_ROLE_KEY"
+    )  # Use service_role for backend
+
+    if not supabase_url:
+        logger.warning("SUPABASE_URL environment variable not set")
+    if not supabase_key:
+        logger.warning("SUPABASE_SERVICE_ROLE_KEY environment variable not set")
+
+    return supabase_url, supabase_key
+
+
+@st.cache_resource
+def setup_database() -> DatabaseService:
+    """
+    Initialize the database service with credentials from environment.
+    Call this during application startup.
+
+    Returns:
+        Initialized DatabaseService instance
+    """
+    supabase_url, supabase_key = get_supabase_credentials()
+
+    db_service = initialize_database(supabase_url, supabase_key)
+
+    if db_service.enabled:
+        logger.info("Database service initialized successfully")
+    else:
+        logger.warning("Database service disabled - credentials not provided")
+
+    return db_service
+
+
 # Convenience functions that mirror the original API
 def add_user_info_to_sheet(user_info: dict) -> Optional[Dict[str, Any]]:
     """Legacy function name for backwards compatibility."""
@@ -409,6 +606,12 @@ def get_user_info_by_email(user_email: str) -> Optional[Dict[str, Any]]:
     """Legacy function name for backwards compatibility."""
     db = get_database()
     return db.get_user_info_by_email(user_email) if db else None
+
+
+def get_full_user_info(user_email: str) -> Optional[Dict[str, Any]]:
+    """Legacy function name for backwards compatibility."""
+    db = get_database()
+    return db.get_full_user_info(user_email) if db else None
 
 
 def update_user_preferences(new_user_info: dict) -> bool:
@@ -429,13 +632,42 @@ def add_user_to_email_list(user_email: str) -> bool:
     return db.add_user_to_email_list(user_email) if db else False
 
 
+def add_coinbase_info(
+    user_email: str, api_client_key: str, api_secret_key: str
+) -> bool:
+    """Legacy function name for backwards compatibility."""
+    db = get_database()
+    print(db)
+    return (
+        db.add_coinbase_info(
+            user_email=user_email,
+            client_api_key=api_client_key,
+            secret_api_key=api_secret_key,
+        )
+        if db
+        else False
+    )
+
+
 def is_user_already_on_email(user_email: str) -> bool:
     """Legacy function name for backwards compatibility."""
     db = get_database()
     return db.is_user_on_email_list(user_email) if db else False
 
 
+def is_user_coinbased(user_email: str) -> bool:
+    """Legacy function name for backwards compatibility."""
+    db = get_database()
+    return db.is_user_coinbased(user_email) if db else False
+
+
 def remove_user_from_email_list(user_email: str) -> bool:
     """Legacy function name for backwards compatibility."""
     db = get_database()
     return db.remove_user_from_email_list(user_email) if db else False
+
+
+def remove_user_api_keys(user_email: str) -> bool:
+    """Legacy function name for backwards compatibility."""
+    db = get_database()
+    return db.remove_user_api_keys(user_email) if db else False

@@ -9,50 +9,13 @@ from dashboard.data_loader import load_bitcoin_data
 from bs4 import BeautifulSoup
 
 
-# Company configurations: CIK numbers for SEC EDGAR filings
-COMPANIES = {
-    "MicroStrategy (MSTR)": {
-        "cik": "1050446",
-        "ticker": "MSTR",
-        "description": "Largest corporate Bitcoin holder",
-        "color": "#F7931A"
-    },
-    "Tesla": {
-        "cik": "1318605",
-        "ticker": "TSLA",
-        "description": "Major Bitcoin purchaser",
-        "color": "#E31937"
-    },
-    "Block (Square)": {
-        "cik": "1512673",
-        "ticker": "SQ",
-        "description": "Bitcoin-focused company",
-        "color": "#00A86B"
-    },
-    "Marathon Digital": {
-        "cik": "1536387",
-        "ticker": "MARA",
-        "description": "Bitcoin mining and holding company",
-        "color": "#FF6B35"
-    },
-    "Coinbase": {
-        "cik": "1679788",
-        "ticker": "COIN",
-        "description": "Cryptocurrency exchange",
-        "color": "#0052FF"
-    },
-    "Riot Platforms": {
-        "cik": "1167419",
-        "ticker": "RIOT",
-        "description": "Bitcoin mining company",
-        "color": "#00D9FF"
-    },
-    "Hut 8 Mining": {
-        "cik": "1716959",
-        "ticker": "HUT",
-        "description": "Bitcoin mining company",
-        "color": "#8B5CF6"
-    }
+# MicroStrategy (MSTR) configuration - CIK number for SEC EDGAR filings
+COMPANY = {
+    "name": "MicroStrategy (MSTR)",
+    "cik": "1050446",
+    "ticker": "MSTR",
+    "description": "Largest corporate Bitcoin holder",
+    "color": "#F7931A"
 }
 
 
@@ -143,7 +106,7 @@ def extract_k8_post_202503(text: str):
     """
     - 8-K format changed starting Mar 2025 → requires new extraction logic.
     - Handles special cases:
-        - Missing entries shown as “—” or “0” → treated as None.
+        - Missing entries shown as "—" or "0" → treated as None.
         - Aggregated historical values may appear even if current period is missing.
         - Known special cases: 2025-10-06 and 2025-07-28 8-k reports
     -  Detects "(in millions/billions)" and converts to absolute numeric values
@@ -329,7 +292,7 @@ def parse_filing_for_bitcoin_purchase(filing_url, filing_date):
         text = soup.get_text().lower()
 
         # Check if filing mentions Bitcoin
-        if "bitcoin" not in text.lower():
+        if "bitcoin" not in text:
             return None
         
         cutoff = datetime(2025, 3, 31)
@@ -418,24 +381,44 @@ def create_price_chart_with_purchases(btc_df, purchases, company_name, company_c
         # Fallback to last 90 days
         btc_df_filtered = btc_df[btc_df.index >= (today - timedelta(days=90))].copy()
     
+    # Calculate 200-period moving average
+    # Need to get enough historical data for MA200
+    ma200_start = chart_start - timedelta(days=250)  # Extra buffer for MA calculation
+    btc_df_for_ma = btc_df[btc_df.index >= ma200_start].copy()
+    btc_df_for_ma = btc_df_for_ma.sort_index()
+    btc_df_for_ma['MA200'] = btc_df_for_ma['PriceUSD'].rolling(window=200, min_periods=1).mean()
+    
+    # Filter MA200 to chart range
+    ma200_filtered = btc_df_for_ma[btc_df_for_ma.index >= chart_start]['MA200'].copy()
+    
     # Create figure
     fig = go.Figure()
     
-    # Add BTC price line with gradient fill
+    # Add MA200 line (blue dashed line) - add first so it appears behind
+    fig.add_trace(
+        go.Scatter(
+            x=ma200_filtered.index,
+            y=ma200_filtered.values,
+            mode="lines",
+            name="MA200",
+            line=dict(color="#1f77b4", width=2, dash="dash"),  # Standard blue for MA200
+            hovertemplate="<b>%{x|%B %d, %Y}</b><br>MA200: $%{y:,.2f}<extra></extra>",
+        )
+    )
+    
+    # Add Historical Price line (orange solid line)
     fig.add_trace(
         go.Scatter(
             x=btc_df_filtered.index,
             y=btc_df_filtered["PriceUSD"],
             mode="lines",
-            name="Bitcoin Price",
-            line=dict(color="#F7931A", width=3),
-            fill='tozeroy',
-            fillcolor='rgba(247, 147, 26, 0.1)',
-            hovertemplate="<b>%{x|%B %d, %Y}</b><br>$%{y:,.2f}<extra></extra>",
+            name="Historical Price",
+            line=dict(color="#ff7f0e", width=2.5),  # Standard orange
+            hovertemplate="<b>%{x|%B %d, %Y}</b><br>Price: $%{y:,.2f}<extra></extra>",
         )
     )
     
-    # Add purchase markers
+    # Add purchase markers (red solid circles for MSTR purchases)
     if purchases:
         purchase_dates = []
         purchase_prices = []
@@ -477,72 +460,72 @@ def create_price_chart_with_purchases(btc_df, purchases, company_name, company_c
                     x=purchase_dates,
                     y=purchase_prices,
                     mode="markers",
-                    name="Purchase",
+                    name="MSTR Purchases",
                     marker=dict(
-                        size=18,
-                        color=company_color,
-                        symbol="diamond",
-                        line=dict(width=2.5, color="white"),
-                        opacity=0.9
+                        size=10,
+                        color="#d62728",  # Standard red for markers
+                        symbol="circle",
+                        line=dict(width=0.5, color="#ffffff"),
+                        opacity=1.0
                     ),
                     hovertemplate="<b>%{x|%B %d, %Y}</b><br>Price: $%{y:,.2f}<br>%{text}<extra></extra>",
                     text=[label.replace("<br>", " - ") for label in purchase_labels],
                 )
             )
     
-    # Update layout with modern styling
+    # Update layout to match reference image styling
     fig.update_layout(
-        height=650,
+        height=450,
         title={
-            "text": f"{company_name} Bitcoin Purchases",
+            "text": "Price & MA200",
             "x": 0.5,
             "xanchor": "center",
-            "font": {"size": 22, "color": "#ffffff", "family": "Inter, sans-serif"},
-            "y": 0.98
+            "font": {"size": 18, "color": "#f0f6fc", "family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"},
+            "y": 0.97
         },
         xaxis_title="",
-        yaxis_title="",
+        yaxis_title="Price (USD)",
+        yaxis_title_font=dict(size=12, color="#c9d1d9", family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"),
         hovermode="x unified",
         template="plotly_dark",
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#ffffff", family="Inter, sans-serif", size=12),
+        plot_bgcolor="#1e1e1e",  # Dark gray background like the image
+        paper_bgcolor="#161b22",
+        font=dict(color="#c9d1d9", family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif", size=11),
         legend=dict(
             orientation="h",
             yanchor="bottom",
             y=-0.12,
             xanchor="center",
             x=0.5,
-            font=dict(color="#999", size=11),
+            font=dict(color="#c9d1d9", size=11),
             bgcolor="rgba(0,0,0,0)",
             bordercolor="rgba(255,255,255,0.1)",
-            borderwidth=1
+            borderwidth=0,
+            itemsizing="constant"
         ),
-        margin=dict(l=50, r=20, t=60, b=50),
+        margin=dict(l=60, r=25, t=50, b=45),
     )
     
     fig.update_xaxes(
-        gridcolor="rgba(255,255,255,0.06)",
+        gridcolor="rgba(255,255,255,0.1)",
         showgrid=True,
         zeroline=False,
         showline=False,
-        tickfont=dict(color="#999", size=10),
+        tickfont=dict(color="#8b949e", size=10),
+        title_font=dict(color="#8b949e", size=11),
         tickformat="%b %d",
-        showspikes=True,
-        spikecolor="rgba(255,255,255,0.2)",
-        spikethickness=1
+        showspikes=False
     )
     
     fig.update_yaxes(
-        gridcolor="rgba(255,255,255,0.06)",
+        gridcolor="rgba(255,255,255,0.1)",
         showgrid=True,
         zeroline=False,
         showline=False,
-        tickfont=dict(color="#999", size=10),
+        tickfont=dict(color="#8b949e", size=10),
+        title_font=dict(color="#c9d1d9", size=12),
         tickformat="$,.0f",
-        showspikes=True,
-        spikecolor="rgba(255,255,255,0.2)",
-        spikethickness=1
+        showspikes=False
     )
     
     return fig
@@ -556,158 +539,300 @@ def main():
         page_icon="₿",
     )
     
-    # Modern CSS styling
+    # Professional CSS styling
     st.markdown("""
     <style>
-    /* Main app background */
+    /* Main app background - professional dark theme */
     .stApp {
-        background: linear-gradient(180deg, #0a0a0a 0%, #0f0f0f 100%);
+        background: #0d1117 !important;
+        background-image: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
     }
     
-    /* Typography */
+    /* Main container */
+    .main .block-container {
+        padding-top: 1.5rem;
+        padding-bottom: 1.5rem;
+        max-width: 1400px;
+    }
+    
+    /* Typography - professional and clean */
     h1 {
-        color: #ffffff !important;
-        font-size: 2.5rem !important;
-        font-weight: 700 !important;
-        letter-spacing: -0.02em !important;
-        margin-bottom: 0.5rem !important;
+        color: #f0f6fc !important;
+        font-size: 2.25rem !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.01em !important;
+        margin-bottom: 0.25rem !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif !important;
     }
     
     h2 {
-        color: #ffffff !important;
-        font-size: 1.75rem !important;
-        font-weight: 600 !important;
-        margin-top: 2rem !important;
-        margin-bottom: 1rem !important;
-    }
-    
-    h3 {
-        color: #ffffff !important;
+        color: #f0f6fc !important;
         font-size: 1.5rem !important;
         font-weight: 600 !important;
         margin-top: 1.5rem !important;
+        margin-bottom: 0.75rem !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif !important;
     }
     
-    /* Company selector styling */
-    .stSelectbox > div > div {
-        background-color: #1a1a1a !important;
-        border: 1px solid #2a2a2a !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Metric cards */
-    [data-testid="stMetricValue"] {
-        font-size: 2rem !important;
+    h3 {
+        color: #f0f6fc !important;
+        font-size: 1.25rem !important;
         font-weight: 600 !important;
+        margin-top: 1.25rem !important;
+        margin-bottom: 0.5rem !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif !important;
+    }
+    
+    /* Company selector - professional styling */
+    .stSelectbox > div > div {
+        background-color: #161b22 !important;
+        border: 1px solid #30363d !important;
+        border-radius: 6px !important;
+        color: #f0f6fc !important;
+    }
+    
+    .stSelectbox label {
+        color: #8b949e !important;
+        font-weight: 500 !important;
+        font-size: 0.875rem !important;
+    }
+    
+    /* Metric cards - professional financial dashboard style */
+    [data-testid="stMetricContainer"] {
+        background: #161b22 !important;
+        border: 1px solid #30363d !important;
+        border-radius: 8px !important;
+        padding: 1rem !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+    }
+    
+    [data-testid="stMetricValue"] {
+        font-size: 1.625rem !important;
+        font-weight: 600 !important;
+        color: #f0f6fc !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif !important;
     }
     
     [data-testid="stMetricLabel"] {
-        font-size: 0.9rem !important;
-        color: #999 !important;
+        font-size: 0.75rem !important;
+        color: #8b949e !important;
         font-weight: 500 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif !important;
     }
     
-    /* Purchase cards */
+    [data-testid="stMetricDelta"] {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif !important;
+    }
+    
+    /* Purchase cards - professional card design */
     .purchase-card {
-        background: linear-gradient(135deg, #1a1a1a 0%, #1f1f1f 100%);
-        padding: 28px;
-        border-radius: 16px;
-        border: 1px solid #2a2a2a;
-        margin: 20px 0;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        background: #161b22 !important;
+        padding: 1.25rem !important;
+        border-radius: 8px !important;
+        border: 1px solid #30363d !important;
+        margin: 0.75rem 0 !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
     }
     
     .purchase-card:hover {
-        border-color: #3a3a3a;
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-        transform: translateY(-4px);
+        border-color: #484f58 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+        transform: translateY(-1px) !important;
     }
     
-    /* Filing cards */
+    /* Filing cards - table-like professional design */
     .filing-card {
-        background: linear-gradient(135deg, #1a1a1a 0%, #1f1f1f 100%);
-        padding: 20px 24px;
-        border-radius: 12px;
-        border: 1px solid #2a2a2a;
-        margin: 12px 0;
-        transition: all 0.3s ease;
+        background: #161b22 !important;
+        padding: 0.875rem 1rem !important;
+        border-radius: 6px !important;
+        border: 1px solid #30363d !important;
+        margin: 0.375rem 0 !important;
+        transition: all 0.2s ease !important;
     }
     
     .filing-card:hover {
-        border-color: #3a3a3a;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        border-color: #484f58 !important;
+        background: #1c2128 !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
     }
     
-    /* Links */
+    /* Links - professional styling */
     a {
         text-decoration: none !important;
+        color: #58a6ff !important;
+        transition: color 0.2s ease !important;
     }
     
-    /* Buttons */
+    a:hover {
+        color: #79c0ff !important;
+        text-decoration: underline !important;
+    }
+    
+    /* Buttons - professional action buttons */
     .stButton > button {
-        background: linear-gradient(135deg, #F7931A 0%, #FFA64D 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 0.5rem 1.5rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
+        background: #238636 !important;
+        color: white !important;
+        border: 1px solid #2ea043 !important;
+        border-radius: 6px !important;
+        padding: 0.5rem 1rem !important;
+        font-weight: 500 !important;
+        font-size: 0.875rem !important;
+        transition: all 0.2s ease !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif !important;
     }
     
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(247, 147, 26, 0.4);
+        background: #2ea043 !important;
+        border-color: #3fb950 !important;
+        box-shadow: 0 2px 8px rgba(46, 160, 67, 0.3) !important;
     }
     
     /* Info boxes */
     .stInfo {
-        background-color: #1a1a1a !important;
-        border-left: 4px solid #F7931A !important;
-        border-radius: 8px !important;
+        background-color: #161b22 !important;
+        border: 1px solid #30363d !important;
+        border-left: 4px solid #58a6ff !important;
+        border-radius: 6px !important;
+        color: #c9d1d9 !important;
     }
     
     /* Success boxes */
     .stSuccess {
-        background-color: #1a2a1a !important;
-        border-left: 4px solid #00ff00 !important;
-        border-radius: 8px !important;
+        background-color: #161b22 !important;
+        border: 1px solid #30363d !important;
+        border-left: 4px solid #238636 !important;
+        border-radius: 6px !important;
+        color: #c9d1d9 !important;
+    }
+    
+    /* Warning boxes */
+    .stWarning {
+        background-color: #161b22 !important;
+        border: 1px solid #30363d !important;
+        border-left: 4px solid #d29922 !important;
+        border-radius: 6px !important;
+        color: #c9d1d9 !important;
     }
     
     /* Remove Streamlit default styling */
     .stMarkdown {
-        color: #e0e0e0;
+        color: #c9d1d9 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif !important;
     }
     
     /* Captions */
     .stCaption {
-        color: #999 !important;
-        font-size: 0.85rem !important;
+        color: #8b949e !important;
+        font-size: 0.8125rem !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif !important;
+    }
+    
+    /* Expander styling - compact and professional */
+    .streamlit-expanderHeader {
+        background: #161b22 !important;
+        border: 1px solid #30363d !important;
+        border-radius: 6px !important;
+        color: #c9d1d9 !important;
+        font-weight: 500 !important;
+        padding: 0.625rem 0.875rem !important;
+        font-size: 0.875rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        background: #1c2128 !important;
+        border-color: #484f58 !important;
+    }
+    
+    .streamlit-expanderContent {
+        background: #161b22 !important;
+        border: 1px solid #30363d !important;
+        border-top: none !important;
+        border-radius: 0 0 6px 6px !important;
+        color: #c9d1d9 !important;
+        padding: 0.875rem 1rem !important;
+        margin-top: -6px !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .streamlit-expanderContent p {
+        margin: 0.375rem 0 !important;
+        font-size: 0.8125rem !important;
+        line-height: 1.6 !important;
+        color: #c9d1d9 !important;
+    }
+    
+    .streamlit-expanderContent p:first-child {
+        margin-top: 0 !important;
+    }
+    
+    .streamlit-expanderContent p:last-child {
+        margin-bottom: 0 !important;
+    }
+    
+    .streamlit-expanderContent strong {
+        color: #f0f6fc !important;
+        font-weight: 600 !important;
+    }
+    
+    .streamlit-expanderContent ul {
+        margin: 0.25rem 0 0.375rem 0 !important;
+        padding-left: 1.5rem !important;
+    }
+    
+    .streamlit-expanderContent li {
+        margin: 0.125rem 0 !important;
+        font-size: 0.8125rem !important;
+        line-height: 1.5 !important;
+        color: #c9d1d9 !important;
+    }
+    
+    /* Spinner styling */
+    .stSpinner > div {
+        border-top-color: #58a6ff !important;
+    }
+    
+    /* Progress bar */
+    .stProgress > div > div > div {
+        background: #238636 !important;
+    }
+    
+    /* Hide Streamlit menu and footer */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Section dividers */
+    .section-divider {
+        border-top: 1px solid #30363d;
+        margin: 1rem 0;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Header
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("## Bitcoin Purchase Indicators")
-        st.markdown(
-            '<p style="color: #999; font-size: 1rem; margin-top: -0.5rem;">Track corporate Bitcoin purchases through SEC filings</p>',
-            unsafe_allow_html=True
-        )
-    with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        with st.expander("ℹ️ Info", expanded=False):
-            st.markdown("""
-            **Data Source:** SEC EDGAR API (free, no authentication)
-            
-            **What we track:**
-            - 8-K forms (Material Events)
-            - Bitcoin purchase disclosures
-            - Purchase dates and amounts
-            
-            **Note:** Filings may be delayed by several days after transactions.
-            """)
+    # Professional Header - more compact
+    st.markdown("""
+    <div style="margin-bottom: 0.75rem;">
+        <h1 style="margin-bottom: 0.25rem; color: #f0f6fc;">Bitcoin Purchase Indicators</h1>
+        <p style="color: #8b949e; font-size: 0.9375rem; margin-top: 0;">Track corporate Bitcoin purchases through SEC filings</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # About section - positioned under title, styled better
+    with st.expander("ℹ️ About", expanded=False):
+        st.markdown("""
+        **Data Source:** SEC EDGAR API
+        
+        **What We Track:**
+        - 8-K forms (Material Events)
+        - Bitcoin purchase disclosures
+        - Purchase dates and amounts
+        
+        **Note:** Filings may be delayed by several days after transactions.
+        """)
     
     # Load BTC data
     try:
@@ -719,35 +844,34 @@ def main():
         st.warning(f"⚠️ Error loading BTC data: {e}")
         btc_df = None
     
-    # Company selection
-    st.markdown("### Select Company")
-    
-    selected_company = st.selectbox(
-        "Choose a company to analyze:",
-        options=list(COMPANIES.keys()),
-        index=0,
-        help="Select which company you want to analyze for Bitcoin purchases",
-        label_visibility="collapsed"
-    )
-    
-    company = COMPANIES[selected_company]
-    
-    # Company header
+    # MicroStrategy company header card - more compact
     st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #1a1a1a 0%, #1f1f1f 100%); 
-                padding: 24px; border-radius: 12px; border-left: 4px solid {company['color']}; 
-                margin: 20px 0;">
-        <h3 style="margin: 0; color: #ffffff;">{selected_company}</h3>
-        <p style="margin: 8px 0 0 0; color: #999; font-size: 0.95rem;">{company['description']}</p>
+    <div style="background: #161b22; 
+                padding: 1rem 1.25rem; 
+                border-radius: 8px; 
+                border: 1px solid #30363d;
+                border-left: 4px solid {COMPANY['color']}; 
+                margin: 1rem 0 1.25rem 0;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 style="margin: 0; color: #f0f6fc; font-size: 1.125rem; font-weight: 600;">{COMPANY['name']}</h3>
+                <p style="margin: 0.25rem 0 0 0; color: #8b949e; font-size: 0.8125rem;">{COMPANY['description']}</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: #8b949e; font-size: 0.8125rem; font-weight: 500;">Ticker:</span>
+                <span style="color: #f0f6fc; font-size: 0.8125rem; font-weight: 600; padding: 0.25rem 0.5rem; background: #21262d; border-radius: 4px; border: 1px solid #30363d;">{COMPANY['ticker']}</span>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
     # Fetch SEC filings
     with st.spinner("Fetching SEC filings..."):
-        filings = fetch_sec_filings(company['cik'], form_type="8-K", days_back=180)
+        filings = fetch_sec_filings(COMPANY['cik'], form_type="8-K", days_back=180)
     
     if not filings:
-        st.info(f"No recent 8-K filings found for {selected_company} in the last 180 days.")
+        st.info(f"No recent 8-K filings found for {COMPANY['name']} in the last 180 days.")
         return
     
     # Parse filings
@@ -777,7 +901,7 @@ def main():
     
     # Display results
     if purchases:
-        # Metrics
+        # Metrics - professional summary section - more compact
         st.markdown("### Summary")
         col1, col2, col3 = st.columns(3)
         
@@ -797,20 +921,20 @@ def main():
             else:
                 st.metric("Total Value", "N/A")
         
-        # Chart
+        # Chart - professional container
         st.markdown("### Price Chart")
         chart = create_price_chart_with_purchases(
             btc_df,
             purchases,
-            selected_company,
-            company['color']
+            COMPANY['name'],
+            COMPANY['color']
         )
         if chart:
             st.plotly_chart(chart, use_container_width=True, config={"displayModeBar": True, "displaylogo": False})
         else:
             st.info("Price chart unavailable.")
         
-        # Purchase details
+        # Purchase details - professional section
         st.markdown("### Purchase Details")
         
         for i, purchase in enumerate(purchases, 1):
@@ -830,42 +954,44 @@ def main():
                     usd_display = f"${purchase['usd_amount']:,.0f}"
             
             st.markdown(f"""
-            <div class="purchase-card" style="border-left: 3px solid {company['color']};">
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+            <div class="purchase-card" style="border-left: 3px solid {COMPANY['color']};">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
                     <div style="flex: 1;">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, {company['color']}22, {company['color']}44); 
-                                        display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700; color: {company['color']};">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.375rem;">
+                            <div style="width: 1.75rem; height: 1.75rem; border-radius: 6px; background: {COMPANY['color']}20; 
+                                        display: flex; align-items: center; justify-content: center; 
+                                        font-size: 0.8125rem; font-weight: 600; color: {COMPANY['color']}; 
+                                        border: 1px solid {COMPANY['color']}40;">
                                 #{i}
                             </div>
                             <div>
-                                <h4 style="margin: 0; color: #ffffff; font-size: 1.3rem; font-weight: 600;">Purchase #{i}</h4>
-                                <p style="margin: 4px 0 0 0; color: #999; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
-                                    <span>📅</span> {format_date(purchase['purchase_date'])}
+                                <h4 style="margin: 0; color: #f0f6fc; font-size: 1rem; font-weight: 600;">Purchase #{i}</h4>
+                                <p style="margin: 0.125rem 0 0 0; color: #8b949e; font-size: 0.8125rem;">
+                                    📅 {format_date(purchase['purchase_date'])}
                                 </p>
                             </div>
                         </div>
                     </div>
                     <a href="{filing['url']}" target="_blank" 
-                       style="background: linear-gradient(135deg, {company['color']} 0%, {company['color']}dd 100%);
-                              color: white; padding: 10px 20px; border-radius: 8px; 
-                              font-weight: 600; font-size: 0.9rem; text-decoration: none;
-                              box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                       style="background: #238636; color: white; padding: 0.5rem 0.875rem; border-radius: 6px; 
+                              font-weight: 500; font-size: 0.8125rem; text-decoration: none;
+                              border: 1px solid #2ea043;
                               transition: all 0.2s ease;
-                              white-space: nowrap;">
+                              white-space: nowrap;
+                              display: inline-block;">
                         View Filing →
                     </a>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
-                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px;">
-                        <p style="margin: 0 0 8px 0; color: #999; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;">BTC Amount</p>
-                        <p style="margin: 0; color: #ffffff; font-size: 1.4rem; font-weight: 700; font-family: 'Monaco', 'Courier New', monospace;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.875rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #30363d;">
+                    <div style="background: #0d1117; padding: 0.875rem; border-radius: 6px; border: 1px solid #30363d;">
+                        <p style="margin: 0 0 0.375rem 0; color: #8b949e; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500;">BTC Amount</p>
+                        <p style="margin: 0; color: #f0f6fc; font-size: 1.375rem; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;">
                             {btc_display}
                         </p>
                     </div>
-                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px;">
-                        <p style="margin: 0 0 8px 0; color: #999; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;">USD Value</p>
-                        <p style="margin: 0; color: #ffffff; font-size: 1.4rem; font-weight: 700; font-family: 'Monaco', 'Courier New', monospace;">
+                    <div style="background: #0d1117; padding: 0.875rem; border-radius: 6px; border: 1px solid #30363d;">
+                        <p style="margin: 0 0 0.375rem 0; color: #8b949e; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500;">USD Value</p>
+                        <p style="margin: 0; color: #f0f6fc; font-size: 1.375rem; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;">
                             {usd_display}
                         </p>
                     </div>
@@ -873,17 +999,17 @@ def main():
             </div>
             """, unsafe_allow_html=True)
     else:
-        st.info(f"No Bitcoin purchase disclosures found in recent 8-K filings for {selected_company}.")
+        st.info(f"No Bitcoin purchase disclosures found in recent 8-K filings for {COMPANY['name']}.")
         st.markdown("""
-        <div style="background: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #2a2a2a; margin-top: 20px;">
-            <p style="color: #999; margin: 0; line-height: 1.6;">
+        <div style="background: #161b22; padding: 1rem; border-radius: 8px; border: 1px solid #30363d; margin-top: 1rem;">
+            <p style="color: #8b949e; margin: 0; line-height: 1.5; font-size: 0.8125rem;">
                 Companies may not file 8-K forms for all purchases, or purchases may be disclosed 
                 in other filing types (10-Q, 10-K, etc.). Check the filings below for more details.
             </p>
         </div>
         """, unsafe_allow_html=True)
     
-    # All filings
+    # All filings - professional table-like display
     st.markdown("### Recent 8-K Filings")
     st.caption(f"Showing {min(10, len(filings))} most recent filings")
     
@@ -891,14 +1017,22 @@ def main():
         st.markdown(f"""
         <div class="filing-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <p style="margin: 0; color: #ffffff; font-weight: 600;">8-K Filing</p>
-                    <p style="margin: 4px 0 0 0; color: #999; font-size: 0.9rem;">{format_date(filing['filingDate'])}</p>
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="padding: 0.5rem 0.75rem; background: #21262d; border-radius: 4px; border: 1px solid #30363d;">
+                            <span style="color: #f0f6fc; font-weight: 600; font-size: 0.875rem;">8-K</span>
+                        </div>
+                        <div>
+                            <p style="margin: 0; color: #f0f6fc; font-weight: 500; font-size: 0.9375rem;">8-K Filing</p>
+                            <p style="margin: 0.25rem 0 0 0; color: #8b949e; font-size: 0.8125rem;">Filed: {format_date(filing['filingDate'])}</p>
+                        </div>
+                    </div>
                 </div>
                 <a href="{filing['url']}" target="_blank" 
-                   style="background: #2a2a2a; color: #F7931A; padding: 8px 16px; 
-                          border-radius: 6px; border: 1px solid #3a3a3a; 
-                          font-weight: 600; font-size: 0.9rem; text-decoration: none;">
+                   style="background: #21262d; color: #58a6ff; padding: 0.5rem 1rem; 
+                          border-radius: 6px; border: 1px solid #30363d; 
+                          font-weight: 500; font-size: 0.875rem; text-decoration: none;
+                          transition: all 0.2s ease;">
                     View →
                 </a>
             </div>

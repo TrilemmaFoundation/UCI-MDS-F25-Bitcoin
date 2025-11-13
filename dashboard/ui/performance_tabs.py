@@ -11,6 +11,8 @@ from dashboard.ui.charts import (
     render_strategy_comparison_chart,
 )
 
+from dashboard.config import get_today
+
 from dashboard.model.strategy_new import construct_features
 from dashboard.analytics.portfolio_metrics import PortfolioAnalyzer, compare_strategies
 
@@ -157,15 +159,38 @@ def render_performance(
     spd_advantage = (
         ((dynamic_spd - uniform_spd) / uniform_spd * 100) if uniform_spd > 0 else 0
     )
-    current_date = str(df_window.index[current_day] - pd.DateOffset(days=1))[:10]
+    current_date = df_window.index[current_day]
+
+    # --- SPD Percentile Calculation ---
+    historical_perf = dynamic_perf.iloc[: current_day + 1]
+    if not historical_perf.empty:
+        # Calculate theoretical best and worst SPD
+        # Best case: buy all at the lowest price in the period
+        # Worst case: buy all at the highest price in the period
+        prices = df_window.iloc[: current_day + 1]["PriceUSD"]
+
+        best_spd = (1e8 / prices.min()) * (current_day + 1)  # All buys at lowest price
+        worst_spd = (1e8 / prices.max()) * (
+            current_day + 1
+        )  # All buys at highest price
+        current_spd = historical_perf.iloc[-1]["Cumulative_SPD"]
+
+        # Avoid division by zero
+        if (best_spd - worst_spd) == 0:
+            spd_percentile = 100.0
+        else:
+            spd_percentile = ((current_spd - worst_spd) / (best_spd - worst_spd)) * 100
+    else:
+        spd_percentile = 0.0  # Default value if there's no performance data
 
     metrics_data = {
         "Metric": [
-            f"{current_date} BTC Price",
+            f"{current_date.strftime('%Y-%m-%d')} BTC Price",
             "Total BTC (Dynamic)",
             "Portfolio Value",
             "Profit / Loss",
-            "SPD (Satoshis Per Dollar) Performance",
+            "SPD (Satoshis Per Dollar)",
+            "SPD Percentile",
         ],
         "Value": [
             f"${current_price:,.0f}",
@@ -173,6 +198,7 @@ def render_performance(
             f"${dynamic_perf.iloc[-1]['Portfolio_Value']:,.2f}",
             f"${dynamic_perf.iloc[-1]['PnL']:,.2f}",
             f"{dynamic_spd:,.0f}",
+            f"{spd_percentile:.1f}%",
         ],
         "Change / Comparison": [
             "",
@@ -180,6 +206,7 @@ def render_performance(
             "",
             f"{dynamic_pnl_pct:+.2f}%",
             f"+{spd_advantage:.2f}% vs DCA",
+            "Ranking vs historical performance",
         ],
     }
 
@@ -244,15 +271,14 @@ def render_performance(
     )
 
     # Add additional explanation for SPD
-    with st.expander("ℹ️ What is SPD (Satoshis Per Dollar)?"):
+    with st.expander("ℹ️ What are SPD (Satoshis Per Dollar) and SPD Percentile?"):
         st.markdown(
             """
             **Satoshis Per Dollar (SPD)** measures the efficiency of your Bitcoin accumulation strategy.
             
-            - **What it measures**: How many satoshis (the smallest unit of Bitcoin, 0.00000001 BTC) you acquire for each dollar invested
-            - **Why it matters**: Higher SPD means you're getting more Bitcoin for your money
-            - **How it works**: The dynamic strategy adjusts investment amounts based on market conditions, buying more when prices are favorable
-            - **Comparison**: The percentage shows how much more efficient the dynamic strategy is compared to uniform DCA (equal daily investments)
+            - **What it measures**: How many satoshis (the smallest unit of Bitcoin, 0.00000001 BTC) you acquire for each dollar invested.
+            - **Why it matters**: Higher SPD means you're getting more Bitcoin for your money.
+            - **SPD Percentile**: This shows how your current SPD ranks against its own historical performance within the selected timeframe. A value of 100% means your current purchasing efficiency is the best it has been.
             
             *Example*: If SPD is +15% vs DCA, you're accumulating 15% more Bitcoin for the same budget using the dynamic strategy.
             """
@@ -418,7 +444,7 @@ def render_purchasing_calendar(
     end_date = start_date + pd.DateOffset(total_days - 1)
 
     # Get current date in Pacific timezone for comparison
-    today_pacific = pd.Timestamp.now(tz="US/Pacific").normalize().date()
+    today_pacific = get_today()
 
     calendar_container = st.container()
 
@@ -503,7 +529,7 @@ def render_purchasing_calendar(
                                     """
                                     st.markdown(day_style, unsafe_allow_html=True)
                                 elif (
-                                    current_date.date() > today_pacific
+                                    current_date.date() > today_pacific.date()
                                     and current_date <= end_date
                                 ):
                                     # Future planned DCA
@@ -547,7 +573,7 @@ def render_purchasing_calendar(
                                             position: relative;
                                             cursor: pointer;
                                         ">
-                                            <strong class="hidden-amount">${future_dca_amount:.0f}</strong>
+                                            <strong class="hidden-amount">${future_dca_amount:.2f}</strong>
                                             <span class="placeholder" style="
                                                 position: absolute;
                                                 left: 50%;
@@ -563,8 +589,74 @@ def render_purchasing_calendar(
                                         unsafe_allow_html=True,
                                     )
                                 else:
-                                    # Past day with no purchase or outside window
-                                    if current_date.date() <= today_pacific:
+                                    # Determine if this is a slider's current day to today's date (future relative to slider)
+                                    slider_current_date = df_current.index[current_day]
+
+                                    if (
+                                        current_date.date() > slider_current_date.date()
+                                        and current_date <= end_date
+                                    ):
+                                        # Future planned DCA (between slider position and end of window)
+                                        st.markdown(
+                                            f"""
+                                        <style>
+                                            .dca-amount-{day_num} .hidden-amount {{
+                                                opacity: 0;
+                                                transition: opacity 0.2s ease;
+                                            }}
+                                            .dca-amount-{day_num} .placeholder {{
+                                                opacity: 1;
+                                                transition: opacity 0.2s ease;
+                                            }}
+                                            .dca-amount-{day_num}:hover .hidden-amount {{
+                                                opacity: 1;
+                                            }}
+                                            .dca-amount-{day_num}:hover .placeholder {{
+                                                opacity: 0;
+                                            }}
+                                        </style>
+                                        <div style="
+                                            border: 2px dashed #9CA3AF;
+                                            border-radius: 8px;
+                                            padding: 8px;
+                                            margin: 2px;
+                                            background-color: rgba(156,163,175,0.1);
+                                            text-align: center;
+                                            min-height: 80px;
+                                        ">
+                                            <div style="font-weight: bold; color: #fff; font-size: 14px;">
+                                                {day_num}
+                                            </div>
+                                            <div style="font-size: 16px; color: #6B7280; margin: 2px 0;">
+                                                ⏳
+                                            </div>
+                                            <div class="dca-amount-{day_num}" style="
+                                                font-size: 16px; 
+                                                color: #fff; 
+                                                margin: 2px 0;
+                                                position: relative;
+                                                cursor: pointer;
+                                            ">
+                                                <strong class="hidden-amount">${future_dca_amount:.2f}</strong>
+                                                <span class="placeholder" style="
+                                                    position: absolute;
+                                                    left: 50%;
+                                                    transform: translateX(-50%);
+                                                    top: 0;
+                                                ">***</span>
+                                            </div>
+                                            <div style="font-size: 9px; color: #fff; margin: 2px 0;">
+                                                Planned DCA
+                                            </div>
+                                        </div>
+                                        """,
+                                            unsafe_allow_html=True,
+                                        )
+                                    elif (
+                                        current_date.date()
+                                        <= slider_current_date.date()
+                                    ):
+                                        # Past day (before slider position) with no purchase
                                         st.markdown(
                                             f"""
                                         <div style="
@@ -588,6 +680,7 @@ def render_purchasing_calendar(
                                         )
                                     else:
                                         st.markdown("")
+
                             else:
                                 st.markdown("")
 

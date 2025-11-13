@@ -109,7 +109,7 @@ def main():
         st.stop()
 
     # --- 3. UI: Header and Controls ---
-    render_header(df_btc[df_btc["Type"] == "Historical"], config.TODAY)
+    render_header(df_btc[df_btc["Type"] == "Historical"], config.get_today())
     start_date, current_day, df_window = render_controls(
         df_btc, params["investment_window"]
     )

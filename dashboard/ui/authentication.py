@@ -3,7 +3,7 @@ import streamlit as st
 # from dashboard.backend.gsheet_utils import add_user_info_to_sheet, does_user_exist
 from dashboard.backend.supabase_utils import add_user_info_to_sheet, does_user_exist
 
-from dashboard.config import TODAY  # Use the centralized TODAY constant
+from dashboard.config import get_today  # Use the centralized get_today() constant
 
 
 def authenticate():
@@ -27,8 +27,8 @@ def authenticate():
             to_add = {
                 "user_email": st.user.get("email"),
                 "budget": 1000,
-                # Use the consistent TODAY from config
-                "start_date": TODAY.strftime("%Y-%m-%d"),
+                # Use the consistent get_today() from config
+                "start_date": get_today().strftime("%Y-%m-%d"),
                 "investment_period": 12,
                 "boost_factor": 1.25,
                 "email_opted_in": 0,

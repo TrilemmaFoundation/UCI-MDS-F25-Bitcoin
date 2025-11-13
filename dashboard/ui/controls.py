@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 import dashboard.config as config
 from datetime import datetime
-from dashboard.config import TODAY
+from dashboard.config import get_today
 
 
 def render_controls(df_btc, investment_window):
@@ -16,10 +16,10 @@ def render_controls(df_btc, investment_window):
     # --- Date Selection ---
     min_start_date = df_btc.index.min().date()
     # Allow selecting dates well into the future
-    max_start_date = (TODAY).date()
+    max_start_date = (get_today()).date()
 
     # Set a default start date from user info or today
-    default_start = config.TODAY
+    default_start = config.get_today()
     if st.session_state.get("user_info") and "start_date" in st.session_state.user_info:
         default_start = pd.to_datetime(st.session_state.user_info["start_date"])
 
@@ -120,18 +120,18 @@ def render_controls(df_btc, investment_window):
         st.stop()
 
     # Check if today is in the window
-    today_is_in_window = start_ts <= config.TODAY <= end_ts
+    today_is_in_window = start_ts <= config.get_today() <= end_ts
     today_day_index = None
 
     if today_is_in_window:
         try:
-            # Use get_loc for a robust way to find the integer position of TODAY
-            today_day_index = df_window.index.get_loc(config.TODAY)
+            # Use get_loc for a robust way to find the integer position of get_today()
+            today_day_index = df_window.index.get_loc(config.get_today())
         except KeyError:
-            # TODAY might not be in the index - find closest date
-            if config.TODAY <= df_window.index[-1]:
+            # get_today() might not be in the index - find closest date
+            if config.get_today() <= df_window.index[-1]:
                 # Find closest date to today that's in our window
-                valid_dates = df_window.index[df_window.index <= config.TODAY]
+                valid_dates = df_window.index[df_window.index <= config.get_today()]
                 if len(valid_dates) > 0:
                     closest_date = valid_dates[-1]
                     today_day_index = df_window.index.get_loc(closest_date)
@@ -157,7 +157,7 @@ def render_controls(df_btc, investment_window):
     slider_max_day = max_day_index
     if today_is_in_window and today_day_index is not None:
         slider_max_day = today_day_index
-    elif start_ts > config.TODAY:  # If the whole window is in the future
+    elif start_ts > config.get_today():  # If the whole window is in the future
         slider_max_day = (
             max_day_index  # Allow viewing entire future window for planning
         )
