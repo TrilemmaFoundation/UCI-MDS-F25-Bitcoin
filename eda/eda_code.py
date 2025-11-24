@@ -99,13 +99,7 @@ def plot_weight_price_by_year(
     fig.update_yaxes(title_text="BTC Price (USD)", secondary_y=False)
     fig.update_yaxes(title_text="Weight", secondary_y=True)
 
-    fig.show()
-
-    from IPython.display import Image
-    import plotly.io as pio
-    png_bytes = pio.to_image(fig, format="png")  # 需要 kaleido
-    Image(png_bytes)
-
+    fig.show("png")
 
 
 # 1.3 Allocation Behavior by Market Regime 
