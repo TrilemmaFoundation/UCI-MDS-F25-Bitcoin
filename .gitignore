@@ -3,3 +3,4 @@ dashboard/.streamlit/secrets.toml
 streamlit-env.txt
 *__pycache__
 dashboard/.DS_Store
+.DS_Store
