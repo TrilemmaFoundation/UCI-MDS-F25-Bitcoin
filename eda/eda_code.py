@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from IPython.display import Image, display
+import plotly.io as pio
 
 
 # 1.2 Allocation vs Price Trend
@@ -99,7 +101,17 @@ def plot_weight_price_by_year(
     fig.update_yaxes(title_text="BTC Price (USD)", secondary_y=False)
     fig.update_yaxes(title_text="Weight", secondary_y=True)
 
-    fig.show("png")
+    fig.show()
+
+    # 👉 2) 轉成 PNG，當成 notebook 的輸出（GitHub 會顯示這個）
+    png_bytes = pio.to_image(
+        fig,
+        format="png",
+        width=1400,    # 圖寬度（可再加）
+        height=600,    # 圖高度
+        scale=2        # 解析度倍數（最重要）
+    )
+    display(Image(png_bytes))
 
 
 # 1.3 Allocation Behavior by Market Regime 
