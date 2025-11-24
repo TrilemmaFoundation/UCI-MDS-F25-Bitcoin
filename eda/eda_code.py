@@ -103,14 +103,16 @@ def plot_weight_price_by_year(
 
     fig.show()
 
-    # 👉 2) 轉成 PNG，當成 notebook 的輸出（GitHub 會顯示這個）
+    # Convert the figure to a PNG and render it as notebook output (so GitHub can display it)
     png_bytes = pio.to_image(
         fig,
         format="png",
-        width=1400,    # 圖寬度（可再加）
-        height=600,    # 圖高度
-        scale=2        # 解析度倍數（最重要）
+        width=1400,    # Image width in pixels (increase for wider output)
+        height=600,    # Image height in pixels
+        scale=2         # Resolution multiplier (the most important for clarity)
     )
+
+    # Display the PNG image inside the notebook
     display(Image(png_bytes))
 
 
