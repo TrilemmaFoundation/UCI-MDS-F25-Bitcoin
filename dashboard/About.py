@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # ==========================================
-# 📊 HELPER FUNCTIONS (Refactored from eda_code.py)
+# 📊 HELPER FUNCTIONS (Refactored from UCI-MDS-F25-BITCOIN/EDA/eda_code.ipynb)
 # ==========================================
 
 
